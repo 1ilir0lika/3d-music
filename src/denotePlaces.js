@@ -36,9 +36,8 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
     const intersects = raycaster.intersectObjects(group.children, true);
     const clicked = intersects.find(i => i.object.userData.title);
     if (clicked) {
-      const { title, artist, album, popularity } = clicked.object.userData;
-      const info = `${title} — ${artist} (${album}) • Popularity: ${popularity}`;
-      openTopPanel(info);
+      console.log('🎵 Opening panel with data:',clicked.object.userData);
+      openTopPanel(clicked.object.userData);
     }
     
   }
@@ -52,17 +51,17 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
     const parsed = parseTrackFeatures(data);
     const mapped = normalizePositions(parsed, 25);
 
-    mapped.forEach(({ x, y, z, popularity, title, artist = 'Unknown', album = 'Unknown' }) => {
+    mapped.forEach(({ x, y, z, popularity, title, artist, album, albumCoverUrl, preview_url }) => {
       const radius = mapToRange(popularity ?? 50, 0, 100, 0.1, 0.6);
       const sphere = new THREE.Mesh(
         new THREE.SphereGeometry(radius, 16, 16),
         new THREE.MeshStandardMaterial({ color: 0xff4444 })
       );
       sphere.position.set(x, y, z);
-      sphere.userData = { title, artist, album, popularity };
+      sphere.userData = { title, artist, album, popularity, albumCoverUrl, preview_url };
       group.add(sphere);
     });
-
+    
     console.log(`✅ Placed ${mapped.length} normalized spheres`);
 
     return {
@@ -115,6 +114,9 @@ function parseTrackFeatures(data) {
         : 'Unknown';
       const album = info.album?.name ?? 'Unknown';
 
+      const albumCoverUrl = info.album?.image_large || info.album?.image_default || '';
+      const preview_url = info.preview_url || '';
+
       return {
         x: f.danceability ?? 0,
         y: f.energy ?? 0,
@@ -122,7 +124,9 @@ function parseTrackFeatures(data) {
         popularity,
         title,
         artist,
-        album
+        album,
+        albumCoverUrl,
+        preview_url
       };
     })
     .filter(Boolean);
@@ -142,14 +146,11 @@ function normalizePositions(data, totalRange = 25) {
   });
 
   return data.map(p => ({
-    x: mapToRange(p.x, min.x, max.x, -totalRange / 2, totalRange / 2),
-    y: mapToRange(p.y, min.y, max.y, -totalRange / 2, totalRange / 2),
-    z: mapToRange(p.z, min.z, max.z, -totalRange / 2, totalRange / 2),
-    popularity: p.popularity,
-    title: p.title,
-    artist: p.artist,
-    album: p.album
-  }));
+      ...p,
+      x: mapToRange(p.x, min.x, max.x, -totalRange / 2, totalRange / 2),
+      y: mapToRange(p.y, min.y, max.y, -totalRange / 2, totalRange / 2),
+      z: mapToRange(p.z, min.z, max.z, -totalRange / 2, totalRange / 2)
+    }));
 }
 
 function mapToRange(value, inMin, inMax, outMin, outMax) {

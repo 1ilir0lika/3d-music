@@ -22,14 +22,28 @@ export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,co
     });
   }
   // Function to open top panel with content (call when clicking spheres)
-  function openTopPanel(text) {
-    console.log('toggleBtn:', toggleBtn);
+  function openTopPanel(trackData) {
     if (!topPanel || !panelContent) return;
-    panelContent.textContent = text;
+  
+    const { title, artist, album, albumCoverUrl, preview_url } = trackData;
+  
+    panelContent.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 16px;">
+        ${albumCoverUrl ? `<img src="${albumCoverUrl}" alt="Album Cover" style="width: 64px; height: 64px; object-fit: cover; border-radius: 4px;">` : ''}
+        <div style="flex: 1;">
+          <div style="font-weight: bold; font-size: 16px;">${title || 'Unknown'}</div>
+          <div style="color: #ccc;">${artist || 'Unknown'}</div>
+          <div style="font-size: 13px; color: #aaa;">${album || 'Unknown'}</div>
+          ${preview_url ? `<audio controls src="${preview_url}" style="margin-top: 8px; width: 100%;"></audio>` : '<div style="margin-top: 8px;">(No preview available)</div>'}
+        </div>
+      </div>
+    `;
+  
     topPanel.classList.remove('hidden');
-    console.log("bbbbbbb")
-    toggleBtn.classList.add('button-shifted');  // Shift button down
+    toggleBtn.classList.add('button-shifted');
   }
+  
+  
   // Stats display
   const statsDiv = document.createElement('div');
   statsDiv.style.cssText = 'color:white;margin-top:10px;font-family:monospace';
