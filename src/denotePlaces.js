@@ -1,0 +1,177 @@
+import * as THREE from 'three';
+
+export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/playlist_chosic_data.json') {
+  const group = new THREE.Group();
+  scene.add(group);
+
+  const hoverLabel = createHoverLabel();
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  let hoveredObject = null;
+
+  // Track mouse position relative to renderer
+  window.addEventListener('mousemove', (event) => {
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  });
+
+  // Handle click on renderer to open top panel with metadata
+  renderer.domElement.addEventListener('click', (event) => {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const mouseClick = new THREE.Vector2(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1
+    );
+
+    // Setup close button listener once
+    const closeBtn = document.getElementById('close-panel');
+    const topPanel = document.getElementById('top-panel');
+    if (closeBtn && topPanel && !closeBtn.dataset.listenerAdded) {
+      closeBtn.addEventListener('click', () => topPanel.classList.add('hidden'));
+      closeBtn.dataset.listenerAdded = 'true';
+    }
+
+    raycaster.setFromCamera(mouseClick, camera);
+    const intersects = raycaster.intersectObjects(group.children, true);
+    const clicked = intersects.find(i => i.object.userData.title);
+
+    if (clicked) {
+      const { title, artist, album, popularity } = clicked.object.userData;
+      const panel = document.getElementById('top-panel');
+      const content = document.getElementById('panel-content');
+      console.log("bbbbbbb")
+
+      content.textContent = `${title} — ${artist} (${album}) • Popularity: ${popularity}`;
+      panel.classList.remove('hidden');
+    }
+  });
+
+  try {
+    const response = await fetch(jsonUrl);
+    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    const data = await response.json();
+
+    const parsed = parseTrackFeatures(data);
+    const mapped = normalizePositions(parsed, 25);
+
+    mapped.forEach(({ x, y, z, popularity, title, artist = 'Unknown', album = 'Unknown' }) => {
+      const radius = mapToRange(popularity ?? 50, 0, 100, 0.1, 0.6);
+      const sphere = new THREE.Mesh(
+        new THREE.SphereGeometry(radius, 16, 16),
+        new THREE.MeshStandardMaterial({ color: 0xff4444 })
+      );
+      sphere.position.set(x, y, z);
+      sphere.userData = { title, artist, album, popularity };
+      group.add(sphere);
+    });
+
+    console.log(`✅ Placed ${mapped.length} normalized spheres`);
+
+    return {
+      updateLabels: () => {
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(group.children, true);
+        const found = intersects.find(i => i.object.userData.title);
+
+        if (found && found.object !== hoveredObject) {
+          hoveredObject = found.object;
+          const { title = '', artist = '', album = '' } = hoveredObject.userData;
+
+          const labelParts = [title];
+          if (artist && artist !== title) labelParts.push(artist);
+          if (album && album !== title && album !== artist) labelParts.push(`(${album})`);
+
+          hoverLabel.innerText = labelParts.join(' — ');
+          hoverLabel.style.display = 'block';
+        } else if (!found) {
+          hoveredObject = null;
+          hoverLabel.style.display = 'none';
+        }
+
+        if (hoveredObject) {
+          const screenPos = hoveredObject.position.clone().project(camera);
+          const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+          const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+          hoverLabel.style.left = `${x + 8}px`;
+          hoverLabel.style.top = `${y + 8}px`;
+        }
+      }
+    };
+  } catch (err) {
+    console.error('❌ Failed to load or parse data:', err);
+    return { updateLabels: () => {} };
+  }
+}
+
+function parseTrackFeatures(data) {
+  return data
+    .map(track => {
+      const f = track.audio_features;
+      const info = track.track_info;
+      if (!f || !info) return null;
+
+      const popularity = info.popularity ?? 50;
+      const title = info.name ?? 'Unknown';
+      const artist = Array.isArray(info.artists) && info.artists.length > 0
+        ? info.artists.map(a => a.name).join(', ')
+        : 'Unknown';
+      const album = info.album?.name ?? 'Unknown';
+
+      return {
+        x: f.danceability ?? 0,
+        y: f.energy ?? 0,
+        z: f.valence ?? 0,
+        popularity,
+        title,
+        artist,
+        album
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizePositions(data, totalRange = 25) {
+  const min = { x: Infinity, y: Infinity, z: Infinity };
+  const max = { x: -Infinity, y: -Infinity, z: -Infinity };
+
+  data.forEach(({ x, y, z }) => {
+    if (x < min.x) min.x = x;
+    if (y < min.y) min.y = y;
+    if (z < min.z) min.z = z;
+    if (x > max.x) max.x = x;
+    if (y > max.y) max.y = y;
+    if (z > max.z) max.z = z;
+  });
+
+  return data.map(p => ({
+    x: mapToRange(p.x, min.x, max.x, -totalRange / 2, totalRange / 2),
+    y: mapToRange(p.y, min.y, max.y, -totalRange / 2, totalRange / 2),
+    z: mapToRange(p.z, min.z, max.z, -totalRange / 2, totalRange / 2),
+    popularity: p.popularity,
+    title: p.title,
+    artist: p.artist,
+    album: p.album
+  }));
+}
+
+function mapToRange(value, inMin, inMax, outMin, outMax) {
+  if (inMax === inMin) return (outMin + outMax) / 2;
+  return ((value - inMin) / (inMax - inMin)) * (outMax - outMin) + outMin;
+}
+
+function createHoverLabel() {
+  const div = document.createElement('div');
+  Object.assign(div.style, {
+    position: 'absolute',
+    background: 'rgba(0, 0, 0, 0.75)',
+    color: '#fff',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    pointerEvents: 'none',
+    fontSize: '14px',
+    display: 'none'
+  });
+  document.body.appendChild(div);
+  return div;
+}

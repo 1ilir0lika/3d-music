@@ -1,0 +1,193 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+               Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  color: white;
+  background-color: #111; /* keep your bg */
+}
+.circle-container {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 10;
+}
+/* Layout container: sidepanel + canvas side by side */
+#container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: #151515;
+}
+
+/* Sidepanel styles */
+.sidepanel {
+  width: 0;
+  background-color: #111;
+  color: white;
+  overflow-x: hidden;
+  transition: width 0.3s ease;
+  padding-top: 60px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  height: 100%;
+  position: relative;
+}
+
+.sidepanel.open {
+  width: 250px;
+}
+
+.sidepanel a {
+  padding: 8px 16px;
+  text-decoration: none;
+  color: #818181;
+  display: block;
+  font-size: 18px;
+  transition: color 0.3s ease;
+}
+
+.sidepanel a:hover {
+  color: #f1f1f1;
+}
+
+.closebtn {
+  position: absolute;
+  top: 0;
+  right: 10px;
+  font-size: 36px;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  line-height: 1;
+  padding: 5px 10px;
+}
+
+.openbtn {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 20;
+  font-size: 20px;
+  cursor: pointer;
+  background-color: #111;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 3px;
+}
+
+.openbtn:hover {
+  background-color: #444;
+}
+
+/* Canvas wrapper takes full available space */
+#canvas-wrapper {
+  flex: 1;
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+
+/* Make canvas fill #canvas-wrapper */
+canvas {
+  display: block; /* remove inline gap */
+  width: 100% !important;
+  height: 100% !important;
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+#sidepanel button {
+  display: block;
+  width: 90%;
+  margin: 10px auto;
+  padding: 10px 16px;
+  background-color: #444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+#sidepanel button:hover {
+  background-color: #666;
+  transform: translateY(-1px);
+}
+
+#sidepanel button:active {
+  background-color: #333;
+  transform: scale(0.98);
+}
+
+/* Optional: add a soft drop shadow for elevation */
+#sidepanel button {
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+#sidepanel p {
+  font-size: 14px;      /* adjust to button font size */
+  font-weight: 600;     /* typical for buttons */
+  margin: 0 0 4px 0;    /* some spacing below paragraph */
+}
+
+.buttons-group {
+  margin-left: 1.2em; /* indent */
+  display: flex;
+  flex-direction: column;
+  gap: 0px; /* spacing between buttons */
+}
+
+.buttons-group button {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Close button inside top panel */
+.close-top-panel {
+  position: absolute;
+  top: 10px;
+  right: 16px;
+  background-color: #444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.close-top-panel:hover {
+  background-color: #666;
+}
+
+.close-top-panel:active {
+  background-color: #222;
+  transform: scale(0.95);
+}
+
+.hidden {
+  display: none;
+}
+
+.button-shifted {
+  margin-top: 500px; /* or whatever height your top panel is */
+  transition: margin-top 0.3s ease;
+}
