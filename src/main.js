@@ -93,12 +93,12 @@ window.addEventListener('mousemove', arrowCircle.handleMouseMove);
 window.addEventListener('click', arrowCircle.handleClick);
 
 // UI setup
-const { updateStats, setupToggleButtons } = setupUI({ arrowCircle, cube, scene, renderer });
+const { updateStats, setupToggleButtons, openTopPanel } = setupUI({ scene, renderer, arrowCircle, cube });
 setupToggleButtons();
 // Directional labels
 let updateLabels = () => {};
 
-denotePlaces(scene, camera, renderer, 'data/playlist_chosic_data.json').then(res => {
+denotePlaces(scene, camera, renderer, 'data/playlist_chosic_data.json', openTopPanel).then(res => {
   updateLabels = res.updateLabels;
 });
 

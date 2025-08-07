@@ -188,6 +188,6 @@ canvas {
 }
 
 .button-shifted {
-  margin-top: 500px; /* or whatever height your top panel is */
+  margin-top: 50px; /* or whatever height your top panel is */
   transition: margin-top 0.3s ease;
 }

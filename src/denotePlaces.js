@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/playlist_chosic_data.json') {
+export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/playlist_chosic_data.json',openTopPanel) {
   const group = new THREE.Group();
   scene.add(group);
 
@@ -35,17 +35,14 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
     raycaster.setFromCamera(mouseClick, camera);
     const intersects = raycaster.intersectObjects(group.children, true);
     const clicked = intersects.find(i => i.object.userData.title);
-
     if (clicked) {
       const { title, artist, album, popularity } = clicked.object.userData;
-      const panel = document.getElementById('top-panel');
-      const content = document.getElementById('panel-content');
-      console.log("bbbbbbb")
-
-      content.textContent = `${title} — ${artist} (${album}) • Popularity: ${popularity}`;
-      panel.classList.remove('hidden');
+      const info = `${title} — ${artist} (${album}) • Popularity: ${popularity}`;
+      openTopPanel(info);
     }
-  });
+    
+  }
+  );
 
   try {
     const response = await fetch(jsonUrl);
