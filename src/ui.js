@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export function setupUI({ arrowCircle, cube, scene,renderer }) {
+export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,controls  }) {
   // DOM elements
   const sidepanel = document.getElementById('sidepanel');
   const toggleBtn = document.getElementById('toggle-btn');
@@ -75,6 +75,35 @@ export function setupUI({ arrowCircle, cube, scene,renderer }) {
       }
       cubeInScene = !cubeInScene;
       toggleCubeBtn.textContent = cubeInScene ? 'Hide Cube' : 'Show Cube';
+    });
+    const btn2d = document.getElementById('2d');
+
+    btn2d.addEventListener('click', () => {
+      // ⬆️ Move camera directly overhead
+      camera.position.set(0, 50, 0);
+      camera.lookAt(0, 0, 0);
+      
+      // 🚫 Disable orbit controls
+      controls.enabled = false;
+
+      // ❌ Hide Progressive & Conservative labels
+      if (labelRefs.progressive) labelRefs.progressive.visible = false;
+      if (labelRefs.conservative) labelRefs.conservative.visible = false;
+    });
+
+    const btn3d = document.getElementById('3d');
+
+    btn3d.addEventListener('click', () => {
+      camera.position.set(5, 7, 10);
+      camera.lookAt(0, 0.5, 0);
+      controls.target.set(0, 0.5, 0);
+      controls.enabled = true;
+      controls.update();
+
+    
+      // Show labels again
+      if (labelRefs.progressive) labelRefs.progressive.visible = true;
+      if (labelRefs.conservative) labelRefs.conservative.visible = true;
     });
   }
 

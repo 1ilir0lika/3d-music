@@ -29,20 +29,6 @@ const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
 dirLight.position.set(5, 10, 7);
 scene.add(dirLight);
 
-// Grid & Planes
-function createGridPlane(rotation, color = 0xffffff) {
-  const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(50, 50),
-    new THREE.MeshStandardMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.4 })
-  );
-  plane.rotation.set(...rotation);
-  scene.add(plane);
-}
-
-createGridPlane([-Math.PI / 2, 0, 0]); // XZ
-createGridPlane([-Math.PI / 2, 0, 0]); // YX
-createGridPlane([0, -Math.PI / 2, 0]); // YZ
-
 function createGridHelper(rotation, color1, color2) {
   const grid = new THREE.GridHelper(50, 50, color1, color2);
   grid.rotation.set(...rotation);
@@ -64,10 +50,10 @@ function createQuadrantPlane(size, color, position, rotation = [-Math.PI / 2, 0,
 const qSize = 25;
 const hSize = qSize / 2;
 
-createQuadrantPlane(qSize, 0xff6666, [-hSize, 0.01, -hSize]); // Q2: Left + Authoritarian
-createQuadrantPlane(qSize, 0x66ccff, [hSize, 0.01, -hSize]);  // Q1: Right + Authoritarian
-createQuadrantPlane(qSize, 0x66ff66, [-hSize, 0.01, hSize]);  // Q3: Left + Libertarian
-createQuadrantPlane(qSize, 0xffcc66, [hSize, 0.01, hSize]);   // Q4: Right + Libertarian
+createQuadrantPlane(qSize, 0xff6666, [-hSize, 0.0, -hSize]); // Q2: Left + Authoritarian
+createQuadrantPlane(qSize, 0x66ccff, [hSize, 0.0, -hSize]);  // Q1: Right + Authoritarian
+createQuadrantPlane(qSize, 0x66ff66, [-hSize, 0.0, hSize]);  // Q3: Left + Libertarian
+createQuadrantPlane(qSize, 0xffcc66, [hSize, 0.0, hSize]);   // Q4: Right + Libertarian
 
 // Cube (player)
 const cube = new THREE.Mesh(
@@ -92,9 +78,30 @@ const arrowCircle = createArrowCircle(scene, cube, camera,renderer, (dir, label)
 window.addEventListener('mousemove', arrowCircle.handleMouseMove);
 window.addEventListener('click', arrowCircle.handleClick);
 
-// UI setup
-const { updateStats, setupToggleButtons, openTopPanel } = setupUI({ scene, renderer, arrowCircle, cube });
+const progressiveLabel = createTextLabel('Progressive', [0, 26, 0], scene);
+const conservativeLabel = createTextLabel('Conservative', [0, -26, 0], scene);
+
+// Pass them into setupUI
+const labelRefs = {
+  progressive: progressiveLabel,
+  conservative: conservativeLabel
+};
+const { updateStats, setupToggleButtons, openTopPanel } = setupUI({
+  scene,
+  renderer,
+  arrowCircle,
+  cube,
+  camera,
+  controls,
+  labelRefs
+});
 setupToggleButtons();
+// Initial state: simulate "2D", hide cube, arrows, and labels
+document.getElementById('2d').click();
+document.getElementById('toggle-cube').click();
+document.getElementById('toggle-arrows').click();
+document.getElementById('toggle-labels').click();
+
 // Directional labels
 let updateLabels = () => {};
 
@@ -132,9 +139,6 @@ createTextLabel('Authoritarian', [0, 0.01, -26], scene);
 createTextLabel('Libertarian', [0, 0.01, 26], scene);
 createTextLabel('Left', [-26, 0.01, 0], scene);
 createTextLabel('Right', [26, 0.01, 0], scene);
-createTextLabel('Progressive', [0, 26, 0], scene);
-createTextLabel('Conservative', [0, -26, 0], scene);
-
 
 // Animate
 function animate() {
@@ -160,4 +164,4 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-});;
+});
