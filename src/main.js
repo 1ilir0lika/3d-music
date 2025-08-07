@@ -69,6 +69,17 @@ createQuadrantPlane(qSize, 0x66ccff, [hSize, 0.01, -hSize]);  // Q1: Right + Aut
 createQuadrantPlane(qSize, 0x66ff66, [-hSize, 0.01, hSize]);  // Q3: Left + Libertarian
 createQuadrantPlane(qSize, 0xffcc66, [hSize, 0.01, hSize]);   // Q4: Right + Libertarian
 
+function createSemiPlane(size, color, position, rotation = [0, 0, Math.PI/2]) {
+  const material = new THREE.MeshStandardMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.35 });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(size*2, size), material);
+  mesh.rotation.set(...rotation);
+  mesh.position.set(...position);
+  scene.add(mesh);
+}
+
+createSemiPlane(qSize, 0x66ff66, [qSize/2, 0, 0]);  // Q3: Left + Libertarian
+createSemiPlane(qSize, 0xffcc66,  [qSize/2, 0, 0]);  // Q3: Left + Libertarian[0, 0, hSize]);   // Q4: Right + Libertarian
+
 // Cube (player)
 const cube = new THREE.Mesh(
   new THREE.BoxGeometry(1, 1, 1),
@@ -132,6 +143,8 @@ createTextLabel('Authoritarian', [0, 0.01, -26], scene);
 createTextLabel('Libertarian', [0, 0.01, 26], scene);
 createTextLabel('Left', [-26, 0.01, 0], scene);
 createTextLabel('Right', [26, 0.01, 0], scene);
+createTextLabel('Left', [-26, 0.01, 0], scene);
+createTextLabel('Right', [26, 0.01, 0], scene);
 
 
 // Animate
@@ -158,4 +171,4 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-});
+});;
