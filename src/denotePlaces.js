@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getMappedAxisFeatures } from './ui.js';
 
 export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/playlist_chosic_data.json',openTopPanel) {
   const group = new THREE.Group();
@@ -8,6 +9,13 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
   let hoveredObject = null;
+  let rawData = []; 
+  const response = await fetch(jsonUrl);
+  if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+  rawData = await response.json(); // ✅ assign to rawData
+  const axes = getMappedAxisFeatures(); // ✅ get user axis choice
+  const parsed = parseTrackFeatures(rawData, axes); // ✅ pass it
+  const mapped = normalizePositions(parsed, 25);
 
   // Track mouse position relative to renderer
   window.addEventListener('mousemove', (event) => {
@@ -48,43 +56,46 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     const data = await response.json();
 
-    const parsed = parseTrackFeatures(data);
-    const mapped = normalizePositions(parsed, 25);
-
-    mapped.forEach(({ x, y, z, popularity, title, artist, album, albumCoverUrl, preview_url }) => {
-      const radius = mapToRange(popularity ?? 50, 0, 100, 0.1, 0.6);
-      const sphere = new THREE.Mesh(
-        new THREE.SphereGeometry(radius, 16, 16),
-        new THREE.MeshStandardMaterial({ color: 0xff4444 })
-      );
-      sphere.position.set(x, y, z);
-      sphere.userData = { title, artist, album, popularity, albumCoverUrl, preview_url };
-      group.add(sphere);
-    });
+    function renderSpheres() {
+      const axes = getMappedAxisFeatures();
+      const parsed = parseTrackFeatures(data, axes);
+      const mapped = normalizePositions(parsed, 25);
     
+      group.clear(); // remove all old spheres
+      mapped.forEach(({ x, y, z, popularity, title, artist, album, albumCoverUrl, preview_url }) => {
+        const radius = mapToRange(popularity ?? 50, 0, 100, 0.1, 0.6);
+        const sphere = new THREE.Mesh(
+          new THREE.SphereGeometry(radius, 16, 16),
+          new THREE.MeshStandardMaterial({ color: 0xff4444 })
+        );
+        sphere.position.set(x, y, z);
+        sphere.userData = { title, artist, album, popularity, albumCoverUrl, preview_url };
+        group.add(sphere);
+      });
     console.log(`✅ Placed ${mapped.length} normalized spheres`);
-
-    return {
+    }
+     renderSpheres();
+     return {
       updateLabels: () => {
         raycaster.setFromCamera(mouse, camera);
         const intersects = raycaster.intersectObjects(group.children, true);
         const found = intersects.find(i => i.object.userData.title);
-
+    
         if (found && found.object !== hoveredObject) {
           hoveredObject = found.object;
           const { title = '', artist = '', album = '' } = hoveredObject.userData;
-
+    
           const labelParts = [title];
           if (artist && artist !== title) labelParts.push(artist);
           if (album && album !== title && album !== artist) labelParts.push(`(${album})`);
-
+    
           hoverLabel.innerText = labelParts.join(' — ');
           hoverLabel.style.display = 'block';
         } else if (!found) {
           hoveredObject = null;
           hoverLabel.style.display = 'none';
         }
-
+    
         if (hoveredObject) {
           const screenPos = hoveredObject.position.clone().project(camera);
           const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
@@ -92,15 +103,21 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
           hoverLabel.style.left = `${x + 8}px`;
           hoverLabel.style.top = `${y + 8}px`;
         }
-      }
+      },
+      refreshSpheres: renderSpheres // ✅ add it here!
     };
+    
   } catch (err) {
     console.error('❌ Failed to load or parse data:', err);
-    return { updateLabels: () => {} };
-  }
+    return {
+      updateLabels: () => {
+        // fallback
+      },
+      refreshSpheres: renderSpheres // ✅ but only on error
+    };
 }
 
-function parseTrackFeatures(data) {
+function parseTrackFeatures(data, axes) {
   return data
     .map(track => {
       const f = track.audio_features;
@@ -113,14 +130,13 @@ function parseTrackFeatures(data) {
         ? info.artists.map(a => a.name).join(', ')
         : 'Unknown';
       const album = info.album?.name ?? 'Unknown';
-
       const albumCoverUrl = info.album?.image_large || info.album?.image_default || '';
       const preview_url = info.preview_url || '';
 
       return {
-        x: f.danceability ?? 0,
-        y: f.energy ?? 0,
-        z: f.valence ?? 0,
+        x: f[axes.x] ?? 0,
+        y: f[axes.y] ?? 0,
+        z: f[axes.z] ?? 0,
         popularity,
         title,
         artist,
@@ -131,6 +147,7 @@ function parseTrackFeatures(data) {
     })
     .filter(Boolean);
 }
+
 
 function normalizePositions(data, totalRange = 25) {
   const min = { x: Infinity, y: Infinity, z: Infinity };
@@ -172,4 +189,5 @@ function createHoverLabel() {
   });
   document.body.appendChild(div);
   return div;
+}
 }

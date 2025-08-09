@@ -1,4 +1,5 @@
 // main.js
+import { axisLabels,getMappedAxisFeatures } from './ui.js'; // or wherever you define it
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createArrowCircle } from './arrowCircle.js';
@@ -77,15 +78,89 @@ const arrowCircle = createArrowCircle(scene, cube, camera,renderer, (dir, label)
 
 window.addEventListener('mousemove', arrowCircle.handleMouseMove);
 window.addEventListener('click', arrowCircle.handleClick);
+// Initial state: simulate "2D", hide cube, arrows, and labels
+document.getElementById('2d').click();
+document.getElementById('toggle-cube').click();
+document.getElementById('toggle-arrows').click();
+document.getElementById('toggle-labels').click();
 
-const progressiveLabel = createTextLabel('Progressive', [0, 26, 0], scene);
-const conservativeLabel = createTextLabel('Conservative', [0, -26, 0], scene);
+['axis-x', 'axis-y', 'axis-z'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener('change', () => {
+      refreshSpheres(); // 🌀 Re-render spheres with new axes
+    });
+  }
+});
+function updateAxisTextLabels() {
+  const axes = getMappedAxisFeatures();
+
+  const updateLabel = (sprite, text) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = 'bold 60px sans-serif';
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+    sprite.material.map.image = canvas;
+    sprite.material.map.needsUpdate = true;
+  };
+
+  updateLabel(axisLabelSprites.xMin, axisLabels[axes.x]?.[0] || 'Min X');
+  updateLabel(axisLabelSprites.xMax, axisLabels[axes.x]?.[1] || 'Max X');
+  updateLabel(axisLabelSprites.yMin, axisLabels[axes.y]?.[0] || 'Min Y');
+  updateLabel(axisLabelSprites.yMax, axisLabels[axes.y]?.[1] || 'Max Y');
+  updateLabel(axisLabelSprites.zMin, axisLabels[axes.z]?.[0] || 'Min Z');
+  updateLabel(axisLabelSprites.zMax, axisLabels[axes.z]?.[1] || 'Max Z');
+}
+
+['axis-x', 'axis-y', 'axis-z'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener('change', () => {
+      refreshSpheres();
+      updateAxisTextLabels(); // 🔁 update labels to match
+    });
+  }
+});
+
+function createAxisLabel(text, position, scene) {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  ctx.font = 'bold 60px sans-serif';
+  ctx.fillStyle = 'white';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(5, 5, 1);
+  sprite.position.set(...position);
+  scene.add(sprite);
+  return sprite;
+}
+const axisLabelSprites = {
+  xMin: createAxisLabel('', [-26, 0.01, 0], scene),
+  xMax: createAxisLabel('', [26, 0.01, 0], scene),
+  yMin: createAxisLabel('', [0, -26, 0], scene),
+  yMax: createAxisLabel('', [0, 26, 0], scene),
+  zMin: createAxisLabel('', [0, 0.01, -26], scene),
+  zMax: createAxisLabel('', [0, 0.01, 26], scene)
+};
+
 
 // Pass them into setupUI
 const labelRefs = {
-  progressive: progressiveLabel,
-  conservative: conservativeLabel
+  up: axisLabelSprites.yMax,
+  down: axisLabelSprites.yMin
 };
+
 const { updateStats, setupToggleButtons, openTopPanel } = setupUI({
   scene,
   renderer,
@@ -95,51 +170,16 @@ const { updateStats, setupToggleButtons, openTopPanel } = setupUI({
   controls,
   labelRefs
 });
-setupToggleButtons();
-// Initial state: simulate "2D", hide cube, arrows, and labels
-document.getElementById('2d').click();
-document.getElementById('toggle-cube').click();
-document.getElementById('toggle-arrows').click();
-document.getElementById('toggle-labels').click();
-
-// Directional labels
-let updateLabels = () => {};
 
 denotePlaces(scene, camera, renderer, 'data/playlist_chosic_data.json', openTopPanel).then(res => {
   updateLabels = res.updateLabels;
+  refreshSpheres = res.refreshSpheres; // ✅ Save the refresh function
+  updateAxisTextLabels(); // ✅ first-time label update
 });
-
-function createTextLabel(text, position, scene) {
-  const canvasSize = 1024;
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = canvasSize;
-  const ctx = canvas.getContext('2d');
-
-  ctx.font = 'bold 140px sans-serif'; // Scaled up to match resolution
-  ctx.fillStyle = 'white';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text, canvasSize / 2, canvasSize / 2);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.minFilter = THREE.LinearFilter; // Avoid mipmap blurring
-  texture.generateMipmaps = false;
-
-  const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
-  const sprite = new THREE.Sprite(material);
-
-  sprite.scale.set(10, 10, 1); // Keep display size large but crisp
-  sprite.position.set(...position);
-
-  scene.add(sprite);
-  return sprite;
-}
-
-createTextLabel('Authoritarian', [0, 0.01, -26], scene);
-createTextLabel('Libertarian', [0, 0.01, 26], scene);
-createTextLabel('Left', [-26, 0.01, 0], scene);
-createTextLabel('Right', [26, 0.01, 0], scene);
-
+// Directional labels
+let updateLabels = () => {};
+let refreshSpheres = () => {};
+setupToggleButtons();
 // Animate
 function animate() {
   requestAnimationFrame(animate);

@@ -1,5 +1,18 @@
 import * as THREE from 'three';
 
+export const axisLabels = {
+  bpm: ['Slow', 'Fast'],
+  danceability: ['Listen', 'Dance'],
+  energy: ['Mellow', 'Intense'],
+  valence: ['Sad', 'Happy'],
+  acousticness: ['Synthetic', 'Acoustic'],
+  instrumentalness: ['Vocals', 'Instrumental'],
+  liveness: ['Studio', 'Live'],
+  speechiness: ['Musical', 'Spoken'],
+  // Add more if needed
+};
+
+
 export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,controls  }) {
   // DOM elements
   const sidepanel = document.getElementById('sidepanel');
@@ -43,7 +56,30 @@ export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,co
     toggleBtn.classList.add('button-shifted');
   }
   
-  
+  const featureOptions = [
+    'danceability',
+    'energy',
+    'valence',
+    'tempo',
+    'instrumentalness',
+    'speechiness',
+    'acousticness',
+    'liveness',
+    'popularity'
+  ];
+  // To have the selections for the axes
+  function populateAxisSelectors() {
+    ['x', 'y', 'z'].forEach(axis => {
+      const select = document.getElementById(`axis-${axis}`);
+      featureOptions.forEach(f => {
+        const option = document.createElement('option');
+        option.value = f;
+        option.textContent = f;
+        select.appendChild(option);
+      });
+    });
+  }
+  populateAxisSelectors();
   // Stats display
   const statsDiv = document.createElement('div');
   statsDiv.style.cssText = 'color:white;margin-top:10px;font-family:monospace';
@@ -99,10 +135,10 @@ export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,co
       
       // 🚫 Disable orbit controls
       controls.enabled = false;
-
+      console.log(labelRefs)
       // ❌ Hide Progressive & Conservative labels
-      if (labelRefs.progressive) labelRefs.progressive.visible = false;
-      if (labelRefs.conservative) labelRefs.conservative.visible = false;
+      if (labelRefs.up) labelRefs.up.visible = false;
+      if (labelRefs.down) labelRefs.down.visible = false;
     });
 
     const btn3d = document.getElementById('3d');
@@ -113,11 +149,9 @@ export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,co
       controls.target.set(0, 0.5, 0);
       controls.enabled = true;
       controls.update();
-
-    
       // Show labels again
-      if (labelRefs.progressive) labelRefs.progressive.visible = true;
-      if (labelRefs.conservative) labelRefs.conservative.visible = true;
+      if (labelRefs.up) labelRefs.up.visible = true;
+      if (labelRefs.down) labelRefs.down.visible = true;
     });
   }
 
@@ -180,5 +214,13 @@ export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,co
     setupToggleButtons,
     updateHoverLabel,
     openTopPanel,
+  };
+}
+
+export function getMappedAxisFeatures() {
+  return {
+    x: document.getElementById('axis-x').value,
+    y: document.getElementById('axis-y').value,
+    z: document.getElementById('axis-z').value
   };
 }
