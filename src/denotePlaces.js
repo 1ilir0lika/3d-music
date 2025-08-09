@@ -164,9 +164,9 @@ function normalizePositions(data, totalRange = 25) {
 
   return data.map(p => ({
       ...p,
-      x: mapToRange(p.x, min.x, max.x, -totalRange / 2, totalRange / 2),
-      y: mapToRange(p.y, min.y, max.y, -totalRange / 2, totalRange / 2),
-      z: mapToRange(p.z, min.z, max.z, -totalRange / 2, totalRange / 2)
+      x: mapToRange(p.x, min.x, max.x, -totalRange / 1.3, totalRange / 1.3),
+      y: mapToRange(p.y, min.y, max.y, -totalRange / 1.3, totalRange / 1.3),
+      z: mapToRange(p.z, min.z, max.z, -totalRange / 1.3, totalRange / 1.3)
     }));
 }
 

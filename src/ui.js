@@ -132,7 +132,7 @@ export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,co
       // ⬆️ Move camera directly overhead
       camera.position.set(0, 50, 0);
       camera.lookAt(0, 0, 0);
-      
+
       // 🚫 Disable orbit controls
       controls.enabled = false;
       console.log(labelRefs)
