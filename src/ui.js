@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-
+import { denotePlaces,spheres } from './denotePlaces';
 export const axisLabels = {
   bpm: ['Slow', 'Fast'],
   danceability: ['Listen', 'Dance'],
@@ -132,9 +132,10 @@ export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,co
       // ⬆️ Move camera directly overhead
       camera.position.set(0, 50, 0);
       camera.lookAt(0, 0, 0);
-
+      switchTo2D(spheres);
       // 🚫 Disable orbit controls
       controls.enabled = false;
+      console.log(spheres)
       console.log(labelRefs)
       // ❌ Hide Progressive & Conservative labels
       if (labelRefs.up) labelRefs.up.visible = false;
@@ -149,6 +150,7 @@ export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,co
       controls.target.set(0, 0.5, 0);
       controls.enabled = true;
       controls.update();
+      switchTo3D(spheres);
       // Show labels again
       if (labelRefs.up) labelRefs.up.visible = true;
       if (labelRefs.down) labelRefs.down.visible = true;
@@ -207,7 +209,21 @@ export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,co
       hoverLabel.style.top = `${y + 8}px`;
     }
   }
-
+  function switchTo2D() {
+    spheres.forEach(sphere => {
+      sphere.position.y = 0;
+    });
+  }
+  
+  function switchTo3D() {
+    spheres.forEach(sphere => {
+      if (sphere.userData.originalY !== undefined) {
+        sphere.position.y = sphere.userData.originalY;
+      }
+    });
+  }
+  
+  
 
   return {
     updateStats,
