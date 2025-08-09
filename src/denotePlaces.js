@@ -168,14 +168,14 @@ function normalizePositions(data, totalRange = 25) {
 
   return data.map(p => ({
       ...p,
-      x: mapToRange(p.x, min.x, max.x, -totalRange / 2, totalRange / 2),
-      y: mapToRange(p.y, min.y, max.y, -totalRange / 2, totalRange / 2),
-      z: mapToRange(p.z, min.z, max.z, -totalRange / 2, totalRange / 2)
+      x: mapToRange(p.x, min.x, max.x, -totalRange, totalRange),
+      y: mapToRange(p.y, min.y, max.y, -totalRange, totalRange),
+      z: mapToRange(p.z, min.z, max.z, -totalRange, totalRange)
     }));
 }
 
 function mapToRange(value, inMin, inMax, outMin, outMax) {
-  if (inMax === inMin) return (outMin + outMax) / 2;
+  if (inMax === inMin) return (outMin + outMax);
   return ((value - inMin) / (inMax - inMin)) * (outMax - outMin) + outMin;
 }
 

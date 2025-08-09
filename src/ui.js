@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { denotePlaces,spheres } from './denotePlaces';
 export const axisLabels = {
   bpm: ['Slow', 'Fast'],
+  tempo: ['Slow', 'Fast'],
   danceability: ['Listen', 'Dance'],
   energy: ['Mellow', 'Intense'],
   valence: ['Sad', 'Happy'],
@@ -209,22 +210,20 @@ export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,co
       hoverLabel.style.top = `${y + 8}px`;
     }
   }
-  function switchTo2D() {
-    spheres.forEach(sphere => {
-      sphere.position.y = 0;
-    });
-  }
-  
-  function switchTo3D() {
-    spheres.forEach(sphere => {
-      if (sphere.userData.originalY !== undefined) {
-        sphere.position.y = sphere.userData.originalY;
-      }
-    });
-  }
-  
-  
+function switchTo2D() {
+  spheres.forEach(sphere => {
+    sphere.userData.originalY = sphere.position.y;
+    sphere.position.y = 0;
+  });
+}
 
+function switchTo3D() {
+  spheres.forEach(sphere => {
+    if (sphere.userData.originalY !== undefined) {
+      sphere.position.y = sphere.userData.originalY;
+    }
+  });
+}
   return {
     updateStats,
     setupToggleButtons,
@@ -232,7 +231,6 @@ export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,co
     openTopPanel,
   };
 }
-
 export function getMappedAxisFeatures() {
   return {
     x: document.getElementById('axis-x').value,
