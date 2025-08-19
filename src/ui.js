@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { denotePlaces,spheres } from './denotePlaces';
+import {spheres } from './denotePlaces';
+import { switchTo2D } from './switch2d';
 export const axisLabels = {
   bpm: ['Slow', 'Fast'],
   tempo: ['Slow', 'Fast'],
@@ -13,6 +14,7 @@ export const axisLabels = {
   // Add more if needed
 };
 
+export let porcamadonna=false;
 
 export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,controls  }) {
   // DOM elements
@@ -141,6 +143,7 @@ export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,co
       // ❌ Hide Progressive & Conservative labels
       if (labelRefs.up) labelRefs.up.visible = false;
       if (labelRefs.down) labelRefs.down.visible = false;
+      porcamadonna=true;
     });
 
     const btn3d = document.getElementById('3d');
@@ -155,6 +158,7 @@ export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,co
       // Show labels again
       if (labelRefs.up) labelRefs.up.visible = true;
       if (labelRefs.down) labelRefs.down.visible = true;
+      porcamadonna=false;
     });
   }
 
@@ -210,12 +214,6 @@ export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,co
       hoverLabel.style.top = `${y + 8}px`;
     }
   }
-function switchTo2D() {
-  spheres.forEach(sphere => {
-    sphere.userData.originalY = sphere.position.y;
-    sphere.position.y = 0;
-  });
-}
 
 function switchTo3D() {
   spheres.forEach(sphere => {

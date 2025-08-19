@@ -1,10 +1,12 @@
 // main.js
-import { axisLabels,getMappedAxisFeatures } from './ui.js'; // or wherever you define it
+import { axisLabels,getMappedAxisFeatures, porcamadonna } from './ui.js'; // or wherever you define it
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createArrowCircle } from './arrowCircle.js';
 import { denotePlaces } from './denotePlaces.js';
-import { setupUI } from './ui.js';
+import { setupUI} from './ui.js';
+import { switchTo2D} from './switch2d.js';
+import {spheres } from './denotePlaces';
 import './style.css';
 
 // Scene setup
@@ -89,6 +91,10 @@ document.getElementById('toggle-labels').click();
   if (el) {
     el.addEventListener('change', () => {
       refreshSpheres(); // 🌀 Re-render spheres with new axes
+      updateAxisTextLabels(); // 🔁 update labels to match
+      if(porcamadonna){
+        switchTo2D(spheres);
+      }
     });
   }
 });
@@ -116,16 +122,6 @@ function updateAxisTextLabels() {
   updateLabel(axisLabelSprites.zMin, axisLabels[axes.z]?.[0] || 'Min Z');
   updateLabel(axisLabelSprites.zMax, axisLabels[axes.z]?.[1] || 'Max Z');
 }
-
-['axis-x', 'axis-y', 'axis-z'].forEach(id => {
-  const el = document.getElementById(id);
-  if (el) {
-    el.addEventListener('change', () => {
-      refreshSpheres();
-      updateAxisTextLabels(); // 🔁 update labels to match
-    });
-  }
-});
 
 function createAxisLabel(text, position, scene) {
   const canvas = document.createElement('canvas');
