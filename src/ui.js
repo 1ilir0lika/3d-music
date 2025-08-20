@@ -1,6 +1,8 @@
+import Chart from 'chart.js/auto'; // ⬅️ keep at the top
 import * as THREE from 'three';
 import {spheres } from './denotePlaces';
 import { switchTo2D } from './switch2d';
+import { normalize } from 'three/src/math/MathUtils.js';
 export const axisLabels = {
   bpm: ['Slow', 'Fast'],
   tempo: ['Slow', 'Fast'],
@@ -17,6 +19,27 @@ export const axisLabels = {
 export let porcamadonna=false;
 
 export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,controls  }) {
+  
+function normalizeFeatures(features) {
+  if (!features || typeof features !== 'object') return {}; // return empty object safely
+
+  const normalized = {};
+  for (const [key, value] of Object.entries(features)) {
+    if (value == null) continue;
+    switch (key) {
+      case 'tempo':
+        normalized[key] = Math.min(value / 200, 1);
+        break;
+      case 'popularity':
+        normalized[key] = value / 100;
+        break;
+      default:
+        normalized[key] = value;
+    }
+  }
+  return normalized;
+}
+
   // DOM elements
   const sidepanel = document.getElementById('sidepanel');
   const toggleBtn = document.getElementById('toggle-btn');
@@ -38,26 +61,123 @@ export function setupUI({ arrowCircle, cube, scene,renderer,camera, labelRefs,co
     });
   }
   // Function to open top panel with content (call when clicking spheres)
-  function openTopPanel(trackData) {
-    if (!topPanel || !panelContent) return;
-  
-    const { title, artist, album, albumCoverUrl, preview_url } = trackData;
-  
-    panelContent.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 16px;">
-        ${albumCoverUrl ? `<img src="${albumCoverUrl}" alt="Album Cover" style="width: 64px; height: 64px; object-fit: cover; border-radius: 4px;">` : ''}
-        <div style="flex: 1;">
-          <div style="font-weight: bold; font-size: 16px;">${title || 'Unknown'}</div>
-          <div style="color: #ccc;">${artist || 'Unknown'}</div>
-          <div style="font-size: 13px; color: #aaa;">${album || 'Unknown'}</div>
-          ${preview_url ? `<audio controls src="${preview_url}" style="margin-top: 8px; width: 100%;"></audio>` : '<div style="margin-top: 8px;">(No preview available)</div>'}
-        </div>
+function openTopPanel(trackData) {
+  if (!topPanel || !panelContent) return;
+
+  const { title, artist, album, albumCoverUrl, preview_url, features } = trackData;
+  panelContent.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 16px;">
+      ${albumCoverUrl ? `<img src="${albumCoverUrl}" alt="Album Cover" style="width: 64px; height: 64px; object-fit: cover; border-radius: 4px;">` : ''}
+      <div style="flex: 1;">
+        <div style="font-weight: bold; font-size: 16px;">${title || 'Unknown'}</div>
+        <div style="color: #ccc;">${artist || 'Unknown'}</div>
+        <div style="font-size: 13px; color: #aaa;">${album || 'Unknown'}</div>
+        ${preview_url ? `<audio controls src="${preview_url}" style="margin-top: 8px; width: 100%;"></audio>` : '<div style="margin-top: 8px;">(No preview available)</div>'}
       </div>
-    `;
-  
-    topPanel.classList.remove('hidden');
-    toggleBtn.classList.add('button-shifted');
+      <div style="flex-shrink: 0; width: 120px; height: 120px; cursor: pointer;">
+        <canvas id="radarChart" width="120" height="120"></canvas>
+      </div>
+    </div>
+  `;
+
+  const ctx = document.getElementById('radarChart').getContext('2d');
+
+  if (openTopPanel.chartInstance) {
+    openTopPanel.chartInstance.destroy();
   }
+  let normalized_features = normalizeFeatures({
+  ...trackData.audio_features,
+  popularity: parseFloat(trackData.popularity) // ensure it's numeric
+});
+  console.log(normalized_features);
+  const featureKeys = Object.keys(axisLabels);
+const labels = featureKeys.map(f => axisLabels[f][1]); const data = featureKeys.map(f => normalized_features?.[f] ?? 0);
+
+  openTopPanel.chartInstance = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels, // labels exist but won't be shown
+      datasets: [{
+        label: 'Track Profile',
+        data,
+        fill: true,
+        backgroundColor: 'rgba(0, 150, 255, 0.25)',
+        borderColor: 'rgba(0, 150, 255, 1)',
+        pointBackgroundColor: 'rgba(0, 150, 255, 1)',
+        pointBorderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: false,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          min: 0,
+          max: 1,
+          ticks: { display: false },      // hide numbers
+          pointLabels: { display: false }, // hide axis labels
+          grid: { color: 'rgba(200,200,200,0.3)' },
+          angleLines: { color: 'rgba(200,200,200,0.3)' }
+        }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  // Click to expand chart with labels
+  ctx.canvas.addEventListener('click', () => {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top:0; left:0; width:100%; height:100%;
+      background: rgba(0,0,0,0.8);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+    `;
+const canvas = document.createElement('canvas');
+modal.appendChild(canvas);
+document.body.appendChild(modal);
+
+// Adjust for device pixel ratio
+const dpr = window.devicePixelRatio || 1;
+const size = 1000;
+canvas.style.width = `${size}px`;
+canvas.style.height = `${size}px`;
+canvas.width = size * dpr;
+canvas.height = size * dpr;
+
+const ctxModal = canvas.getContext('2d');
+ctxModal.setTransform(dpr, 0, 0, dpr, 0, 0);;
+
+    new Chart(ctxModal, {
+      type: 'radar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Track Profile',
+          data,
+          fill: true,
+          backgroundColor: 'rgba(0, 150, 255, 0.25)',
+          borderColor: 'rgba(0, 150, 255, 1)',
+          pointBackgroundColor: 'rgba(0, 150, 255, 1)',
+          pointBorderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: { r: { min: 0, max: 1 } },
+      }
+    });
+
+    modal.addEventListener('click', () => modal.remove());
+  });
+
+  topPanel.classList.remove('hidden');
+  toggleBtn.classList.add('button-shifted');
+}
+
+
   
   const featureOptions = [
     'danceability',

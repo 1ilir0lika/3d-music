@@ -48,6 +48,7 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
     const clicked = intersects.find(i => i.object.userData.title);
     if (clicked) {
       console.log('🎵 Opening panel with data:',clicked.object.userData);
+      console.log(clicked.object.userData);
       openTopPanel(clicked.object.userData);
     }
     
@@ -65,14 +66,14 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
       const mapped = normalizePositions(parsed, 25);
     
       group.clear(); // remove all old spheres
-      mapped.forEach(({ x, y, z, popularity, title, artist, album, albumCoverUrl, preview_url }) => {
+      mapped.forEach(({ x, y, z, popularity, title, artist, album, albumCoverUrl, preview_url,audio_features }) => {
         const radius = mapToRange(popularity ?? 50, 0, 100, 0.1, 0.6);
         const sphere = new THREE.Mesh(
           new THREE.SphereGeometry(radius, 16, 16),
           new THREE.MeshStandardMaterial({ color: 0xff4444 })
         );
         sphere.position.set(x, y, z);
-        sphere.userData = { title, artist, album, popularity, albumCoverUrl, preview_url };
+        sphere.userData = { title, artist, album, popularity, albumCoverUrl, preview_url,audio_features };
         group.add(sphere);
         spheres.push(sphere)
       });
@@ -146,7 +147,8 @@ function parseTrackFeatures(data, axes) {
         artist,
         album,
         albumCoverUrl,
-        preview_url
+        preview_url,
+        audio_features: f
       };
     })
     .filter(Boolean);
