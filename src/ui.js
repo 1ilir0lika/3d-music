@@ -4,7 +4,6 @@ import {spheres } from './denotePlaces';
 import { switchTo2D } from './switch2d';
 import { normalize } from 'three/src/math/MathUtils.js';
 export const axisLabels = {
-  bpm: ['Slow', 'Fast'],
   tempo: ['Slow', 'Fast'],
   danceability: ['Listen', 'Dance'],
   energy: ['Mellow', 'Intense'],
@@ -13,7 +12,7 @@ export const axisLabels = {
   instrumentalness: ['Vocals', 'Instrumental'],
   liveness: ['Studio', 'Live'],
   speechiness: ['Musical', 'Spoken'],
-  // Add more if needed
+  popularity: ['Niche', 'Popular'],
 };
 
 export let porcamadonna=false;
@@ -80,20 +79,23 @@ function openTopPanel(trackData) {
     </div>
   `;
 
-  const ctx = document.getElementById('radarChart').getContext('2d');
+  const radarCanvas = document.getElementById('radarChart');
 
   if (openTopPanel.chartInstance) {
     openTopPanel.chartInstance.destroy();
   }
+  const popularityRaw = parseFloat(trackData.popularity);
   let normalized_features = normalizeFeatures({
-  ...trackData.audio_features,
-  popularity: parseFloat(trackData.popularity) // ensure it's numeric
-});
-  console.log(normalized_features);
+    ...trackData.audio_features,
+    popularity: isNaN(popularityRaw) ? 0 : popularityRaw
+  });
+  console.log('trackData.popularity raw:', trackData.popularity);
+  console.log('normalized_features:', normalized_features);
   const featureKeys = Object.keys(axisLabels);
-const labels = featureKeys.map(f => axisLabels[f][1]); const data = featureKeys.map(f => normalized_features?.[f] ?? 0);
+  const labels = featureKeys.map(f => axisLabels[f][1]);
+  const data = featureKeys.map(f => normalized_features?.[f] ?? 0);
 
-  openTopPanel.chartInstance = new Chart(ctx, {
+  openTopPanel.chartInstance = new Chart(radarCanvas, {
     type: 'radar',
     data: {
       labels, // labels exist but won't be shown
@@ -125,7 +127,7 @@ const labels = featureKeys.map(f => axisLabels[f][1]); const data = featureKeys.
   });
 
   // Click to expand chart with labels
-  ctx.canvas.addEventListener('click', () => {
+  radarCanvas.addEventListener('click', () => {
     const modal = document.createElement('div');
     modal.style.cssText = `
       position: fixed;
@@ -134,22 +136,21 @@ const labels = featureKeys.map(f => axisLabels[f][1]); const data = featureKeys.
       display: flex; align-items: center; justify-content: center;
       z-index: 9999;
     `;
-const canvas = document.createElement('canvas');
-modal.appendChild(canvas);
-document.body.appendChild(modal);
 
-// Adjust for device pixel ratio
-const dpr = window.devicePixelRatio || 1;
-const size = 1000;
-canvas.style.width = `${size}px`;
-canvas.style.height = `${size}px`;
-canvas.width = size * dpr;
-canvas.height = size * dpr;
+    const dpr = window.devicePixelRatio || 1;
+    const displaySize = Math.min(window.innerWidth, window.innerHeight) * 0.8;
+    const canvas = document.createElement('canvas');
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width = `${displaySize}px`;
+    canvas.style.height = `${displaySize}px`;
+    modal.appendChild(canvas);
+    document.body.appendChild(modal);
 
-const ctxModal = canvas.getContext('2d');
-ctxModal.setTransform(dpr, 0, 0, dpr, 0, 0);;
+    const ctxModal = canvas.getContext('2d');
+    ctxModal.scale(dpr, dpr);
 
-    new Chart(ctxModal, {
+    new Chart(canvas, {
       type: 'radar',
       data: {
         labels,
@@ -164,9 +165,22 @@ ctxModal.setTransform(dpr, 0, 0, dpr, 0, 0);;
         }]
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        scales: { r: { min: 0, max: 1 } },
+        responsive: false,
+        maintainAspectRatio: false,
+        animation: false,
+        scales: {
+          r: {
+            min: 0,
+            max: 1,
+            ticks: { color: 'white' },
+            pointLabels: { color: 'white', font: { size: 14 } },
+            grid: { color: 'rgba(200,200,200,0.3)' },
+            angleLines: { color: 'rgba(200,200,200,0.3)' }
+          }
+        },
+        plugins: {
+          legend: { display: false }
+        }
       }
     });
 

@@ -138,10 +138,11 @@ function parseTrackFeatures(data, axes) {
       const albumCoverUrl = info.album?.image_large || info.album?.image_default || '';
       const preview_url = info.preview_url || '';
 
+      const featureVal = (key) => key === 'popularity' ? (popularity / 100) : (f[key] ?? 0);
       return {
-        x: f[axes.x] ?? 0,
-        y: f[axes.y] ?? 0,
-        z: f[axes.z] ?? 0,
+        x: featureVal(axes.x),
+        y: featureVal(axes.y),
+        z: featureVal(axes.z),
         popularity,
         title,
         artist,
