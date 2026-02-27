@@ -1,48 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Three.js with Side Panel</title>
-    <link rel="stylesheet" href="/style.css" />
-  </head>
-  <body>
-    <div id="app">
-      <div id="top-panel" class="top-panel hidden">
-        <button id="close-panel" class="close-top-panel">×</button>
-        <p id="panel-content">This is the top hidden panel.</p>
-      </div>      
-      <button id="toggle-btn" class="openbtn">☰ Settings</button>
-      <div id="container">
-        <div id="sidepanel" class="sidepanel">
-          <div class="group">
-            <p>Graph</p>
-            <div class="buttons-group">
-              <button id="2d">2d</button>
-              <button id="3d">3d</button>
-            </div>
-          </div>
-          <div class="group">
-            <p>Axis</p>
-            <div id="axis-controls">
-              <label>X: <select id="axis-x"></select></label>
-              <label>Y: <select id="axis-y"></select></label>
-              <label>Z: <select id="axis-z"></select></label>
-            </div>
-          </div>
-          <div class="group">
-            <p>Cube</p>
-            <div class="buttons-group">
-              <button id="toggle-labels">Toggle Labels</button>
-              <button id="toggle-arrows">Toggle Arrows</button>
-              <button id="toggle-cube">Toggle Cube</button>
-            </div>
-          </div>
-          
-        </div>
-        <div id="canvas-wrapper"></div>
-      </div>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Three.js with Side Panel</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<div id="app">
+<div id="top-panel" class="top-panel hidden">
+<button id="close-panel" class="close-top-panel">×</button>
+<p id="panel-content">This is the top hidden panel.</p>
+</div>      
+<button id="toggle-btn" class="openbtn">☰ Settings</button>
+<div id="container">
+<div id="sidepanel" class="sidepanel">
+
+  <details class="group">
+    <summary>Graph</summary>
+    <div class="buttons-group">
+      <button id="2d">2d</button>
+      <button id="3d">3d</button>
     </div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+  </details>
+
+  <details class="group">
+    <summary>Axis</summary>
+    <div id="axis-controls">
+      <label>X: <select id="axis-x"></select></label>
+      <label>Y: <select id="axis-y"></select></label>
+      <label>Z: <select id="axis-z"></select></label>
+    </div>
+  </details>
+
+  <details class="group">
+    <summary>Cube</summary>
+    <div class="buttons-group">
+      <button id="toggle-labels">Toggle Labels</button>
+      <button id="toggle-arrows">Toggle Arrows</button>
+      <button id="toggle-cube">Toggle Cube</button>
+    </div>
+  </details>
+
+  <details class="group">
+    <summary>Regions</summary>
+    <div class="buttons-group">
+      <button id="toggle-bubbles">Hide Regions</button>
+    </div>
+  </details>
+
+</div>
+<div id="canvas-wrapper"></div>
+</div>
+</div>
+<script type="module" src="/src/main.js"></script>
+</body>
 </html>

@@ -13,7 +13,7 @@ import './style.css';
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x151515);
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
 camera.position.set(5, 7, 10);
 camera.layers.enable(1); // ARROW_LAYER
 camera.layers.enable(2); // LABEL_LAYER
@@ -169,12 +169,16 @@ const { updateStats, setupToggleButtons, openTopPanel } = setupUI({
 
 denotePlaces(scene, camera, renderer, 'data/playlist_chosic_data.json', openTopPanel).then(res => {
   updateLabels = res.updateLabels;
-  refreshSpheres = res.refreshSpheres; // ✅ Save the refresh function
-  updateAxisTextLabels(); // ✅ first-time label update
+  refreshSpheres = res.refreshSpheres;
+  updateBubbles = res.updateBubbles ?? (() => {});
+  toggleBubbles = res.toggleBubbles ?? (() => {});
+  updateAxisTextLabels();
 });
 // Directional labels
 let updateLabels = () => {};
 let refreshSpheres = () => {};
+let updateBubbles = () => {};
+let toggleBubbles = () => {};
 setupToggleButtons();
 // Animate
 function animate() {
@@ -194,6 +198,11 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
+// Toggle bubbles
+window.addEventListener('toggle-bubbles', (e) => {
+  toggleBubbles(e.detail);
+});
 
 // Resize
 window.addEventListener('resize', () => {

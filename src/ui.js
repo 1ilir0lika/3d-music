@@ -263,6 +263,15 @@ function openTopPanel(trackData) {
       cubeInScene = !cubeInScene;
       toggleCubeBtn.textContent = cubeInScene ? 'Hide Cube' : 'Show Cube';
     });
+    const toggleBubblesBtn = document.getElementById('toggle-bubbles');
+    let bubblesVisible = true;
+    toggleBubblesBtn?.addEventListener('click', () => {
+      bubblesVisible = !bubblesVisible;
+      // toggleBubbles is exposed from main via a global-ish pattern — call via custom event
+      window.dispatchEvent(new CustomEvent('toggle-bubbles', { detail: bubblesVisible }));
+      toggleBubblesBtn.textContent = bubblesVisible ? 'Hide Regions' : 'Show Regions';
+    });
+
     const btn2d = document.getElementById('2d');
 
     btn2d.addEventListener('click', () => {

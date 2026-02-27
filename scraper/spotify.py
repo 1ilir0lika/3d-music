@@ -1,14 +1,14 @@
 import requests
 import json
 import time
+import os
 
 # ------------------ CONFIG ------------------
-
-SPOTIFY_PLAYLIST_ID = "1zmwMVDleZsK8qc7PJ1Xe5"  # <- Replace with your playlist ID
+SPOTIFY_PLAYLIST_ID = "0ta9XHC4LIO1n9Zv4wCurm"  # <- Replace with your playlist ID
 SPOTIFY_CLIENT_ID = "e2ad3b8b7ca14593b979dab5bc907a67"
 SPOTIFY_CLIENT_SECRET = "0b6288b6cc2d437ab99819f662140743"
 X_WP_NONCE = "d38f6cfdd8"  # May need to update periodically
-MAX_TRACKS = 10000000  # Optional limit
+OUTPUT_FILE = "playlist_chosic_data.json"
 
 # ------------------ AUTH ------------------
 
@@ -21,12 +21,12 @@ def get_spotify_token(client_id, client_secret):
 
 # ------------------ FETCH SPOTIFY TRACKS ------------------
 
-def get_playlist_tracks(playlist_id, token, max_tracks=MAX_TRACKS):
+def get_playlist_tracks(playlist_id, token):
     headers = {'Authorization': f'Bearer {token}'}
     tracks = []
     offset = 0
 
-    while len(tracks) < max_tracks:
+    while True:
         url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks?offset={offset}&limit=100"
         resp = requests.get(url, headers=headers)
         data = resp.json()
@@ -38,8 +38,6 @@ def get_playlist_tracks(playlist_id, token, max_tracks=MAX_TRACKS):
                     "name": track["name"],
                     "artist": track["artists"][0]["name"]
                 })
-                if len(tracks) >= max_tracks:
-                    break
         if not data.get("next"):
             break
         offset += 100
@@ -80,11 +78,25 @@ def fetch_chosic_data(track_id, nonce):
 
 def main():
     token = get_spotify_token(SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET)
-    tracks = get_playlist_tracks(SPOTIFY_PLAYLIST_ID, token, MAX_TRACKS)
+    tracks = get_playlist_tracks(SPOTIFY_PLAYLIST_ID, token)
 
-    all_data = []
+    # Load existing JSON if available
+    if os.path.exists(OUTPUT_FILE):
+        with open(OUTPUT_FILE, "r") as f:
+            try:
+                all_data = json.load(f)
+            except json.JSONDecodeError:
+                all_data = []
+    else:
+        all_data = []
+
+    existing_ids = {entry["spotify"]["id"] for entry in all_data if "spotify" in entry}
 
     for i, track in enumerate(tracks):
+        if track["id"] in existing_ids:
+            print(f"[{i+1}/{len(tracks)}] Skipping {track['name']} (already exists)")
+            continue
+
         print(f"[{i+1}/{len(tracks)}] Fetching {track['name']} by {track['artist']}...")
         data = fetch_chosic_data(track["id"], X_WP_NONCE)
         if data:
@@ -92,11 +104,10 @@ def main():
             all_data.append(data)
         time.sleep(0.1)  # Be kind to Chosic's server
 
-    with open("playlist_chosic_data.json", "w") as f:
+    with open(OUTPUT_FILE, "w") as f:
         json.dump(all_data, f, indent=4)
 
-    print("✅ Done. Data saved to 'playlist_chosic_data.json'")
+    print(f"✅ Done. Data saved/updated in '{OUTPUT_FILE}'")
 
 if __name__ == "__main__":
     main()
-

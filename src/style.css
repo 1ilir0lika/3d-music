@@ -2,7 +2,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
                Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   color: white;
-  background-color: #111; /* keep your bg */
+  background-color: #111;
 }
 .circle-container {
   position: absolute;
@@ -14,7 +14,6 @@ body {
   pointer-events: none;
   z-index: 10;
 }
-/* Layout container: sidepanel + canvas side by side */
 #container {
   display: flex;
   height: 100vh;
@@ -23,7 +22,6 @@ body {
   background: #151515;
 }
 
-/* Sidepanel styles */
 .sidepanel {
   width: 0;
   background-color: #111;
@@ -85,7 +83,6 @@ body {
   background-color: #444;
 }
 
-/* Canvas wrapper takes full available space */
 #canvas-wrapper {
   flex: 1;
   position: relative;
@@ -98,10 +95,8 @@ body {
   -ms-user-select: none;
 }
 
-
-/* Make canvas fill #canvas-wrapper */
 canvas {
-  display: block; /* remove inline gap */
+  display: block;
   width: 100% !important;
   height: 100% !important;
   user-select: none;
@@ -123,6 +118,7 @@ canvas {
   font-size: 14px;
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.1s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
 #sidepanel button:hover {
@@ -135,22 +131,17 @@ canvas {
   transform: scale(0.98);
 }
 
-/* Optional: add a soft drop shadow for elevation */
-#sidepanel button {
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-}
-
 #sidepanel p {
-  font-size: 14px;      /* adjust to button font size */
-  font-weight: 600;     /* typical for buttons */
-  margin: 0 0 4px 0;    /* some spacing below paragraph */
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
 }
 
 .buttons-group {
-  margin-left: 1.2em; /* indent */
+  margin-left: 1.2em;
   display: flex;
   flex-direction: column;
-  gap: 0px; /* spacing between buttons */
+  gap: 0px;
 }
 
 .buttons-group button {
@@ -158,7 +149,6 @@ canvas {
   font-weight: 600;
 }
 
-/* Close button inside top panel */
 .close-top-panel {
   position: absolute;
   top: 10px;
@@ -188,7 +178,7 @@ canvas {
 }
 
 .button-shifted {
-  margin-top: 125px; /* or whatever height your top panel is */
+  margin-top: 125px;
   transition: margin-top 0.3s ease;
 }
 
@@ -204,12 +194,12 @@ canvas {
   justify-content: space-between;
   align-items: center;
   font-size: 0.9rem;
-  color: #ddd; /* lighter for dark bg */
+  color: #ddd;
 }
 
 #axis-controls select {
   appearance: none;
-  background-color: #222; /* matches sidepanel bg tone */
+  background-color: #222;
   border: 1px solid #444;
   border-radius: 6px;
   padding: 0.3rem 0.6rem;
@@ -217,6 +207,12 @@ canvas {
   color: #eee;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  background-image: linear-gradient(45deg, transparent 50%, #ccc 50%),
+                    linear-gradient(135deg, #ccc 50%, transparent 50%);
+  background-position: calc(100% - 1rem) center, calc(100% - 0.75rem) center;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 1.5rem;
 }
 
 #axis-controls select:hover {
@@ -228,12 +224,54 @@ canvas {
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
 }
 
-/* Optional: Add a subtle down-arrow indicator */
-#axis-controls select {
-  background-image: linear-gradient(45deg, transparent 50%, #ccc 50%),
-                    linear-gradient(135deg, #ccc 50%, transparent 50%);
-  background-position: calc(100% - 1rem) center, calc(100% - 0.75rem) center;
-  background-size: 6px 6px, 6px 6px;
-  background-repeat: no-repeat;
-  padding-right: 1.5rem; /* room for arrow */
+/* ── Collapsible groups ───────────────────────────────────────────────────────── */
+details.group {
+  border-top: 1px solid #2a2a2a;
+}
+
+details.group:last-child {
+  border-bottom: 1px solid #2a2a2a;
+}
+
+details.group summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #888;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+details.group summary::-webkit-details-marker {
+  display: none;
+}
+
+details.group summary::before {
+  content: '▶';
+  font-size: 9px;
+  color: #555;
+  transition: transform 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+}
+
+details.group[open] summary::before {
+  transform: rotate(90deg);
+  color: #888;
+}
+
+details.group summary:hover {
+  color: #fff;
+}
+
+details.group[open] summary {
+  color: #fff;
+}
+
+details.group > *:not(summary) {
+  padding-bottom: 10px;
 }

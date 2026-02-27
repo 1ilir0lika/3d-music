@@ -1,4 +1,0 @@
-house: N:3, NE:1, E:-2, SE:0
-tower: N:0, NE:0, E:0, SE:0
-secretPlace: N:5, NE:-1, E:1, SE:2
-
