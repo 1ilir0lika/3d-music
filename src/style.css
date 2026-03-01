@@ -275,3 +275,31 @@ details.group[open] summary {
 details.group > *:not(summary) {
   padding-bottom: 10px;
 }
+/* ── Year range slider ────────────────────────────────────────────────────────── */
+#year-filter-container {
+  margin-top: 4px;
+}
+
+#year-from::-webkit-slider-thumb,
+#year-to::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #4fc3f7;
+  border: 2px solid #111;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+#year-from::-moz-range-thumb,
+#year-to::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #4fc3f7;
+  border: 2px solid #111;
+  cursor: pointer;
+  pointer-events: all;
+}

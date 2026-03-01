@@ -292,6 +292,7 @@ export function setupUI({ arrowCircle, cube, scene, renderer, camera, labelRefs,
     });
   }
 
+
   // ── Hover label ────────────────────────────────────────────────────────────
   const hoverLabel = document.createElement('div');
   hoverLabel.style.cssText = `
@@ -345,7 +346,70 @@ export function setupUI({ arrowCircle, cube, scene, renderer, camera, labelRefs,
     });
   }
 
-  return { updateStats, setupToggleButtons, updateHoverLabel, openTopPanel };
+  // ── Year range filter ──────────────────────────────────────────────────────
+  function setupYearFilter() {
+    const container = document.getElementById('year-filter-container');
+    if (!container) return;
+
+    const MIN_YEAR = 1950;
+    const MAX_YEAR = new Date().getFullYear();
+    let yearMin = MIN_YEAR;
+    let yearMax = MAX_YEAR;
+
+    // Build slider HTML using string concat to avoid nested template literal issues
+    const sliderStyle = 'position:absolute;width:100%;top:50%;transform:translateY(-50%);'
+      + 'appearance:none;background:transparent;pointer-events:none;outline:none;margin:0;';
+
+    container.innerHTML =
+      '<div style="padding:0 10px 10px;">'
+      + '<div style="display:flex;justify-content:space-between;font-size:12px;color:#aaa;margin-bottom:6px;">'
+      + '<span id="year-min-label">' + MIN_YEAR + '</span>'
+      + '<span id="year-max-label">' + MAX_YEAR + '</span>'
+      + '</div>'
+      + '<div style="position:relative;height:28px;margin:0 8px;">'
+      + '<div id="year-track" style="position:absolute;top:50%;left:0;right:0;height:4px;background:#333;border-radius:2px;transform:translateY(-50%);"></div>'
+      + '<div id="year-range-fill" style="position:absolute;top:50%;height:4px;background:#4fc3f7;border-radius:2px;transform:translateY(-50%);"></div>'
+      + '<input id="year-from" type="range" min="' + MIN_YEAR + '" max="' + MAX_YEAR + '" value="' + MIN_YEAR + '" style="' + sliderStyle + '">'
+      + '<input id="year-to"   type="range" min="' + MIN_YEAR + '" max="' + MAX_YEAR + '" value="' + MAX_YEAR + '" style="' + sliderStyle + '">'
+      + '</div>'
+      + '</div>';
+
+    const fromSlider = document.getElementById('year-from');
+    const toSlider   = document.getElementById('year-to');
+    const minLabel   = document.getElementById('year-min-label');
+    const maxLabel   = document.getElementById('year-max-label');
+    const fill       = document.getElementById('year-range-fill');
+
+    function updateFill() {
+      const total = MAX_YEAR - MIN_YEAR;
+      const left  = ((yearMin - MIN_YEAR) / total) * 100;
+      const right = ((yearMax - MIN_YEAR) / total) * 100;
+      fill.style.left  = left + '%';
+      fill.style.width = (right - left) + '%';
+    }
+
+    function onFromChange() {
+      yearMin = Math.min(parseInt(fromSlider.value), yearMax - 1);
+      fromSlider.value = yearMin;
+      minLabel.textContent = yearMin;
+      updateFill();
+      window.dispatchEvent(new CustomEvent('year-filter-change', { detail: { min: yearMin, max: yearMax } }));
+    }
+
+    function onToChange() {
+      yearMax = Math.max(parseInt(toSlider.value), yearMin + 1);
+      toSlider.value = yearMax;
+      maxLabel.textContent = yearMax;
+      updateFill();
+      window.dispatchEvent(new CustomEvent('year-filter-change', { detail: { min: yearMin, max: yearMax } }));
+    }
+
+    fromSlider.addEventListener('input', onFromChange);
+    toSlider.addEventListener('input', onToChange);
+    updateFill();
+  }
+
+  return { updateStats, setupToggleButtons, updateHoverLabel, openTopPanel, setupYearFilter };
 }
 
 export function getMappedAxisFeatures() {

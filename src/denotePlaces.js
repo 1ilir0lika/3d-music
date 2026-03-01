@@ -144,23 +144,34 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
   });
 
   try {
+    // Year filter state — updated via 'year-filter-change' event
+    let yearFilter = { min: 1950, max: new Date().getFullYear() };
+    window.addEventListener('year-filter-change', (e) => {
+      yearFilter = e.detail;
+      renderSpheres();
+    });
+
     function renderSpheres() {
       const axes = getMappedAxisFeatures();
       const parsed = parseTrackFeatures(data, axes, assignments);
-      const mapped = normalizePositions(parsed);
+      const filtered = parsed.filter(t => {
+        if (t.year == null) return true; // keep tracks with unknown year
+        return t.year >= yearFilter.min && t.year <= yearFilter.max;
+      });
+      const mapped = normalizePositions(filtered, 25, axes);
 
       group.clear();
       spheres.length = 0;
 
-      mapped.forEach(({ x, y, z, popularity, title, artist, album, albumCoverUrl, preview_url, audio_features, clusterIndex }) => {
-        const radius = 0.1 + ((popularity ?? 50) / 100) * 0.5;
+      mapped.forEach(({ x, y, z, popularity, title, artist, album, albumCoverUrl, preview_url, year, audio_features, clusterIndex }) => {
+        const radius = mapToRange(popularity ?? 50, 0, 100, 0.1, 0.6);
         const color = CLUSTER_COLORS[clusterIndex % CLUSTER_COLORS.length];
         const sphere = new THREE.Mesh(
           new THREE.SphereGeometry(radius, 16, 16),
           new THREE.MeshStandardMaterial({ color })
         );
         sphere.position.set(x, y, z);
-        sphere.userData = { title, artist, album, popularity, albumCoverUrl, preview_url, audio_features, clusterIndex };
+        sphere.userData = { title, artist, album, popularity, albumCoverUrl, preview_url, year, audio_features, clusterIndex };
         group.add(sphere);
         spheres.push(sphere);
       });
@@ -309,6 +320,8 @@ function parseTrackFeatures(data, axes, assignments) {
       const album = info.album?.name ?? 'Unknown';
       const albumCoverUrl = info.album?.image_large || info.album?.image_default || '';
       const preview_url = info.preview_url || '';
+      const releaseDate = info.album?.release_date ?? '';
+      const year = releaseDate ? parseInt(releaseDate.slice(0, 4)) : null;
       const featureVal = (key) => key === 'popularity' ? (popularity / 100) : (f[key] ?? 0);
 
       return {
@@ -321,6 +334,7 @@ function parseTrackFeatures(data, axes, assignments) {
         album,
         albumCoverUrl,
         preview_url,
+        year,
         audio_features: f,
         clusterIndex: assignments[i] ?? 0,
       };
@@ -328,20 +342,42 @@ function parseTrackFeatures(data, axes, assignments) {
     .filter(Boolean);
 }
 
-// Map feature values [0,1] → world space [-25,25], identical to cubeState.js.
-// Using a uniform mapping (not data-range stretching) keeps all axes at the
-// same scale so cube movement is always axis-aligned, never diagonal.
-function featureToWorld(value) {
-  return (value - 0.5) * 50;
-}
+function normalizePositions(data, totalRange = 25, axes) {
+  const min = { x: Infinity, y: Infinity, z: Infinity };
+  const max = { x: -Infinity, y: -Infinity, z: -Infinity };
 
-function normalizePositions(data) {
+  data.forEach(({ x, y, z }) => {
+    if (x < min.x) min.x = x;
+    if (y < min.y) min.y = y;
+    if (z < min.z) min.z = z;
+    if (x > max.x) max.x = x;
+    if (y > max.y) max.y = y;
+    if (z > max.z) max.z = z;
+  });
+
+  // Store ranges keyed by FEATURE NAME so the UI can always look up by feature
+  if (axes) {
+    lastAxisRanges = {
+      byFeature: {
+        [axes.x]: { min: min.x, max: max.x },
+        [axes.y]: { min: min.y, max: max.y },
+        [axes.z]: { min: min.z, max: max.z },
+      },
+      totalRange,
+    };
+  }
+
   return data.map(p => ({
     ...p,
-    x: featureToWorld(p.x),
-    y: featureToWorld(p.y),
-    z: featureToWorld(p.z),
+    x: mapToRange(p.x, min.x, max.x, -totalRange, totalRange),
+    y: mapToRange(p.y, min.y, max.y, -totalRange, totalRange),
+    z: mapToRange(p.z, min.z, max.z, -totalRange, totalRange),
   }));
+}
+
+function mapToRange(value, inMin, inMax, outMin, outMax) {
+  if (inMax === inMin) return (outMin + outMax) / 2;
+  return ((value - inMin) / (inMax - inMin)) * (outMax - outMin) + outMin;
 }
 
 function createHoverLabel() {

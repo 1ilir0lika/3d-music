@@ -174,7 +174,7 @@ function updateAxisTextLabels() {
 }
 
 // ── UI setup ───────────────────────────────────────────────────────────────────
-const { updateStats, setupToggleButtons, openTopPanel } = setupUI({
+const { updateStats, setupToggleButtons, openTopPanel, setupYearFilter } = setupUI({
   scene,
   renderer,
   arrowCircle,
@@ -232,6 +232,7 @@ denotePlaces(scene, camera, renderer, 'data/playlist_chosic_data.json', openTopP
 });
 
 setupToggleButtons();
+setupYearFilter();
 
 // ── Animation loop ─────────────────────────────────────────────────────────────
 function animate() {
