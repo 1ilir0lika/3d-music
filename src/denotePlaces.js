@@ -3,6 +3,7 @@ import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { getMappedAxisFeatures } from './ui.js';
 
 export const spheres = [];
+let lastAxisRanges = null; // declared here, assigned in normalizePositions
 
 // ── Cluster colours ────────────────────────────────────────────────────────────
 const CLUSTER_COLORS = [
@@ -146,7 +147,7 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
     function renderSpheres() {
       const axes = getMappedAxisFeatures();
       const parsed = parseTrackFeatures(data, axes, assignments);
-      const mapped = normalizePositions(parsed, 25);
+      const mapped = normalizePositions(parsed, 25, axes);
 
       group.clear();
       spheres.length = 0;
@@ -327,7 +328,7 @@ function parseTrackFeatures(data, axes, assignments) {
     .filter(Boolean);
 }
 
-function normalizePositions(data, totalRange = 25) {
+function normalizePositions(data, totalRange = 25, axes) {
   const min = { x: Infinity, y: Infinity, z: Infinity };
   const max = { x: -Infinity, y: -Infinity, z: -Infinity };
 
@@ -339,6 +340,18 @@ function normalizePositions(data, totalRange = 25) {
     if (y > max.y) max.y = y;
     if (z > max.z) max.z = z;
   });
+
+  // Store ranges keyed by FEATURE NAME so the UI can always look up by feature
+  if (axes) {
+    lastAxisRanges = {
+      byFeature: {
+        [axes.x]: { min: min.x, max: max.x },
+        [axes.y]: { min: min.y, max: max.y },
+        [axes.z]: { min: min.z, max: max.z },
+      },
+      totalRange,
+    };
+  }
 
   return data.map(p => ({
     ...p,

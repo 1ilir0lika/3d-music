@@ -1,15 +1,23 @@
 // main.js
-import { axisLabels,getMappedAxisFeatures, porcamadonna } from './ui.js'; // or wherever you define it
+import { axisLabels, getMappedAxisFeatures, porcamadonna } from './ui.js';
+import { createStreetView } from './streetview.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createArrowCircle } from './arrowCircle.js';
 import { denotePlaces } from './denotePlaces.js';
-import { setupUI} from './ui.js';
-import { switchTo2D} from './switch2d.js';
-import {spheres } from './denotePlaces';
+import { setupUI } from './ui.js';
+import { switchTo2D } from './switch2d.js';
+import { spheres } from './denotePlaces';
+import {
+  cubeFeatures,
+  syncCubePosition,
+  moveCubeAlongFeature,
+  featureToWorld,
+  FEATURE_KEYS,
+} from './cubeState.js';
 import './style.css';
 
-// Scene setup
+// ── Scene setup ────────────────────────────────────────────────────────────────
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x151515);
 
@@ -26,81 +34,124 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0.5, 0);
 controls.update();
 
-// Lighting
+// ── Lighting ───────────────────────────────────────────────────────────────────
 scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
 dirLight.position.set(5, 10, 7);
 scene.add(dirLight);
 
+// ── Grids ──────────────────────────────────────────────────────────────────────
 function createGridHelper(rotation, color1, color2) {
   const grid = new THREE.GridHelper(50, 50, color1, color2);
   grid.rotation.set(...rotation);
   scene.add(grid);
 }
+createGridHelper([0, 0, 0],           0x888888, 0x444444);
+createGridHelper([Math.PI / 2, 0, 0], 0x888888, 0x444444);
+createGridHelper([0, 0, Math.PI / 2], 0x888888, 0x444444);
 
-createGridHelper([0, 0, 0], 0x888888, 0x444444); // XZ
-createGridHelper([Math.PI / 2, 0, 0], 0x888888, 0x444444); // XY
-createGridHelper([0, 0, Math.PI / 2], 0x888888, 0x444444); // YZ
-
+// ── Quadrant planes ────────────────────────────────────────────────────────────
 function createQuadrantPlane(size, color, position, rotation = [-Math.PI / 2, 0, 0]) {
-  const material = new THREE.MeshStandardMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.35 });
+  const material = new THREE.MeshStandardMaterial({
+    color, side: THREE.DoubleSide, transparent: true, opacity: 0.35,
+  });
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(size, size), material);
   mesh.rotation.set(...rotation);
   mesh.position.set(...position);
   scene.add(mesh);
 }
+const qSize = 25, hSize = qSize / 2;
+createQuadrantPlane(qSize, 0xff6666, [-hSize, 0.0, -hSize]);
+createQuadrantPlane(qSize, 0x66ccff, [ hSize, 0.0, -hSize]);
+createQuadrantPlane(qSize, 0x66ff66, [-hSize, 0.0,  hSize]);
+createQuadrantPlane(qSize, 0xffcc66, [ hSize, 0.0,  hSize]);
 
-const qSize = 25;
-const hSize = qSize / 2;
-
-createQuadrantPlane(qSize, 0xff6666, [-hSize, 0.0, -hSize]); // Q2: Left + Authoritarian
-createQuadrantPlane(qSize, 0x66ccff, [hSize, 0.0, -hSize]);  // Q1: Right + Authoritarian
-createQuadrantPlane(qSize, 0x66ff66, [-hSize, 0.0, hSize]);  // Q3: Left + Libertarian
-createQuadrantPlane(qSize, 0xffcc66, [hSize, 0.0, hSize]);   // Q4: Right + Libertarian
-
-// Cube (player)
+// ── Cube (player) ──────────────────────────────────────────────────────────────
 const cube = new THREE.Mesh(
   new THREE.BoxGeometry(1, 1, 1),
   new THREE.MeshStandardMaterial({ color: 0x00ffff })
 );
 scene.add(cube);
 
-// Trail
+// Place cube at its initial feature-space position
+syncCubePosition(cube, getMappedAxisFeatures());
+
+// ── Trail ──────────────────────────────────────────────────────────────────────
 const trailPoints = [];
 const trailGeometry = new THREE.BufferGeometry();
 const trailMaterial = new THREE.LineBasicMaterial({ color: 0x3399ff });
 const trailLine = new THREE.Line(trailGeometry, trailMaterial);
 scene.add(trailLine);
 
-// Arrows
-const arrowCircle = createArrowCircle(scene, cube, camera,renderer, (dir, label) => {
-  cube.position.add(dir.clone().multiplyScalar(0.5));
-  updateStats();
+// ── Arrows ─────────────────────────────────────────────────────────────────────
+// Arrow step: 0.05 in feature space (5% of the 0-1 range)
+const FEATURE_STEP = 0.05;
+
+const arrowCircle = createArrowCircle(scene, cube, camera, renderer, (dir, label) => {
+  if (!streetView?.isActive()) {
+    const axes = getMappedAxisFeatures();
+
+    // Figure out which axis (x/y/z) this arrow belongs to and its polarity
+    const dx = Math.round(dir.x), dy = Math.round(dir.y), dz = Math.round(dir.z);
+    if (dx !== 0) moveCubeAlongFeature(cube, axes, 'x', dx * FEATURE_STEP);
+    else if (dy !== 0) moveCubeAlongFeature(cube, axes, 'y', dy * FEATURE_STEP);
+    else if (dz !== 0) moveCubeAlongFeature(cube, axes, 'z', dz * FEATURE_STEP);
+
+    updateStats();
+  }
 });
 
 window.addEventListener('mousemove', arrowCircle.handleMouseMove);
 window.addEventListener('click', arrowCircle.handleClick);
-// Initial state: simulate "2D", hide cube, arrows, and labels
-document.getElementById('2d').click();
-document.getElementById('toggle-cube').click();
-document.getElementById('toggle-arrows').click();
-document.getElementById('toggle-labels').click();
 
-['axis-x', 'axis-y', 'axis-z'].forEach(id => {
-  const el = document.getElementById(id);
-  if (el) {
-    el.addEventListener('change', () => {
-      refreshSpheres(); // 🌀 Re-render spheres with new axes
-      updateAxisTextLabels(); // 🔁 update labels to match
-      if(porcamadonna){
-        switchTo2D(spheres);
-      }
-    });
-  }
+// ── Street view ────────────────────────────────────────────────────────────────
+const streetView = createStreetView(scene, camera, cube, spheres, controls, renderer, arrowCircle);
+
+window.addEventListener('enter-street-view', () => {
+  if (spheres.length === 0) return;
+  streetView.enter();
 });
+window.addEventListener('exit-street-view', () => {
+  streetView.exit();
+  camera.position.set(0, 50, 0);
+  camera.lookAt(0, 0, 0);
+});
+
+// ── Axis label sprites ─────────────────────────────────────────────────────────
+function createAxisLabel(text, position) {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  ctx.font = 'bold 60px sans-serif';
+  ctx.fillStyle = 'white';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(5, 5, 1);
+  sprite.position.set(...position);
+  scene.add(sprite);
+  return sprite;
+}
+
+const axisLabelSprites = {
+  xMin: createAxisLabel('', [-26, 0.01, 0]),
+  xMax: createAxisLabel('', [ 26, 0.01, 0]),
+  yMin: createAxisLabel('', [0, -26, 0]),
+  yMax: createAxisLabel('', [0,  26, 0]),
+  zMin: createAxisLabel('', [0, 0.01, -26]),
+  zMax: createAxisLabel('', [0, 0.01,  26]),
+};
+
+const labelRefs = {
+  up:   axisLabelSprites.yMax,
+  down: axisLabelSprites.yMin,
+};
+
 function updateAxisTextLabels() {
   const axes = getMappedAxisFeatures();
-
   const updateLabel = (sprite, text) => {
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = 512;
@@ -114,7 +165,6 @@ function updateAxisTextLabels() {
     sprite.material.map.image = canvas;
     sprite.material.map.needsUpdate = true;
   };
-
   updateLabel(axisLabelSprites.xMin, axisLabels[axes.x]?.[0] || 'Min X');
   updateLabel(axisLabelSprites.xMax, axisLabels[axes.x]?.[1] || 'Max X');
   updateLabel(axisLabelSprites.yMin, axisLabels[axes.y]?.[0] || 'Min Y');
@@ -123,40 +173,7 @@ function updateAxisTextLabels() {
   updateLabel(axisLabelSprites.zMax, axisLabels[axes.z]?.[1] || 'Max Z');
 }
 
-function createAxisLabel(text, position, scene) {
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 512;
-  const ctx = canvas.getContext('2d');
-  ctx.font = 'bold 60px sans-serif';
-  ctx.fillStyle = 'white';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
-  const sprite = new THREE.Sprite(material);
-  sprite.scale.set(5, 5, 1);
-  sprite.position.set(...position);
-  scene.add(sprite);
-  return sprite;
-}
-const axisLabelSprites = {
-  xMin: createAxisLabel('', [-26, 0.01, 0], scene),
-  xMax: createAxisLabel('', [26, 0.01, 0], scene),
-  yMin: createAxisLabel('', [0, -26, 0], scene),
-  yMax: createAxisLabel('', [0, 26, 0], scene),
-  zMin: createAxisLabel('', [0, 0.01, -26], scene),
-  zMax: createAxisLabel('', [0, 0.01, 26], scene)
-};
-
-
-// Pass them into setupUI
-const labelRefs = {
-  up: axisLabelSprites.yMax,
-  down: axisLabelSprites.yMin
-};
-
+// ── UI setup ───────────────────────────────────────────────────────────────────
 const { updateStats, setupToggleButtons, openTopPanel } = setupUI({
   scene,
   renderer,
@@ -164,27 +181,63 @@ const { updateStats, setupToggleButtons, openTopPanel } = setupUI({
   cube,
   camera,
   controls,
-  labelRefs
+  labelRefs,
 });
 
-denotePlaces(scene, camera, renderer, 'data/playlist_chosic_data.json', openTopPanel).then(res => {
-  updateLabels = res.updateLabels;
-  refreshSpheres = res.refreshSpheres;
-  updateBubbles = res.updateBubbles ?? (() => {});
-  toggleBubbles = res.toggleBubbles ?? (() => {});
-  updateAxisTextLabels();
+// ── Axis change handler ────────────────────────────────────────────────────────
+function syncArrowLabels() {
+  arrowCircle.syncLabels(getMappedAxisFeatures(), axisLabels);
+}
+
+['axis-x', 'axis-y', 'axis-z'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener('change', () => {
+      const axes = getMappedAxisFeatures();
+
+      // ✨ Key: re-map cube world position from feature vector with new axes
+      syncCubePosition(cube, axes);
+
+      refreshSpheres();
+      updateAxisTextLabels();
+      syncArrowLabels();
+      updateStats();
+
+      if (porcamadonna) {
+        switchTo2D(spheres);
+      }
+    });
+  }
 });
-// Directional labels
-let updateLabels = () => {};
-let refreshSpheres = () => {};
-let updateBubbles = () => {};
-let toggleBubbles = () => {};
+
+// ── Initial state ──────────────────────────────────────────────────────────────
+document.getElementById('2d').click();
+document.getElementById('toggle-cube').click();
+document.getElementById('toggle-arrows').click();
+document.getElementById('toggle-labels').click();
+
+// ── denotePlaces ───────────────────────────────────────────────────────────────
+let updateLabels    = () => {};
+let refreshSpheres  = () => {};
+let updateBubbles   = () => {};
+let toggleBubbles   = () => {};
+
+denotePlaces(scene, camera, renderer, 'data/playlist_chosic_data.json', openTopPanel).then(res => {
+  updateLabels   = res.updateLabels;
+  refreshSpheres = res.refreshSpheres;
+  updateBubbles  = res.updateBubbles  ?? (() => {});
+  toggleBubbles  = res.toggleBubbles  ?? (() => {});
+  updateAxisTextLabels();
+  syncArrowLabels();
+});
+
 setupToggleButtons();
-// Animate
+
+// ── Animation loop ─────────────────────────────────────────────────────────────
 function animate() {
   requestAnimationFrame(animate);
 
-  const pos = cube.position.clone();
+  const pos  = cube.position.clone();
   const last = trailPoints[trailPoints.length - 1];
   if (!last || last.distanceTo(pos) > 0.05) {
     trailPoints.push(pos);
@@ -195,16 +248,16 @@ function animate() {
   arrowCircle.updatePositions();
   arrowCircle.update();
   updateLabels();
+  updateBubbles();
+  streetView.update();
+  updateStats();
   renderer.render(scene, camera);
 }
 animate();
 
-// Toggle bubbles
-window.addEventListener('toggle-bubbles', (e) => {
-  toggleBubbles(e.detail);
-});
+// ── Events ─────────────────────────────────────────────────────────────────────
+window.addEventListener('toggle-bubbles', (e) => toggleBubbles(e.detail));
 
-// Resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
