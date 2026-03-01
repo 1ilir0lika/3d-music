@@ -147,13 +147,13 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
     function renderSpheres() {
       const axes = getMappedAxisFeatures();
       const parsed = parseTrackFeatures(data, axes, assignments);
-      const mapped = normalizePositions(parsed, 25, axes);
+      const mapped = normalizePositions(parsed);
 
       group.clear();
       spheres.length = 0;
 
       mapped.forEach(({ x, y, z, popularity, title, artist, album, albumCoverUrl, preview_url, audio_features, clusterIndex }) => {
-        const radius = mapToRange(popularity ?? 50, 0, 100, 0.1, 0.6);
+        const radius = 0.1 + ((popularity ?? 50) / 100) * 0.5;
         const color = CLUSTER_COLORS[clusterIndex % CLUSTER_COLORS.length];
         const sphere = new THREE.Mesh(
           new THREE.SphereGeometry(radius, 16, 16),
@@ -328,42 +328,20 @@ function parseTrackFeatures(data, axes, assignments) {
     .filter(Boolean);
 }
 
-function normalizePositions(data, totalRange = 25, axes) {
-  const min = { x: Infinity, y: Infinity, z: Infinity };
-  const max = { x: -Infinity, y: -Infinity, z: -Infinity };
-
-  data.forEach(({ x, y, z }) => {
-    if (x < min.x) min.x = x;
-    if (y < min.y) min.y = y;
-    if (z < min.z) min.z = z;
-    if (x > max.x) max.x = x;
-    if (y > max.y) max.y = y;
-    if (z > max.z) max.z = z;
-  });
-
-  // Store ranges keyed by FEATURE NAME so the UI can always look up by feature
-  if (axes) {
-    lastAxisRanges = {
-      byFeature: {
-        [axes.x]: { min: min.x, max: max.x },
-        [axes.y]: { min: min.y, max: max.y },
-        [axes.z]: { min: min.z, max: max.z },
-      },
-      totalRange,
-    };
-  }
-
-  return data.map(p => ({
-    ...p,
-    x: mapToRange(p.x, min.x, max.x, -totalRange, totalRange),
-    y: mapToRange(p.y, min.y, max.y, -totalRange, totalRange),
-    z: mapToRange(p.z, min.z, max.z, -totalRange, totalRange),
-  }));
+// Map feature values [0,1] → world space [-25,25], identical to cubeState.js.
+// Using a uniform mapping (not data-range stretching) keeps all axes at the
+// same scale so cube movement is always axis-aligned, never diagonal.
+function featureToWorld(value) {
+  return (value - 0.5) * 50;
 }
 
-function mapToRange(value, inMin, inMax, outMin, outMax) {
-  if (inMax === inMin) return (outMin + outMax) / 2;
-  return ((value - inMin) / (inMax - inMin)) * (outMax - outMin) + outMin;
+function normalizePositions(data) {
+  return data.map(p => ({
+    ...p,
+    x: featureToWorld(p.x),
+    y: featureToWorld(p.y),
+    z: featureToWorld(p.z),
+  }));
 }
 
 function createHoverLabel() {
