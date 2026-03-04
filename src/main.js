@@ -174,7 +174,7 @@ function updateAxisTextLabels() {
 }
 
 // ── UI setup ───────────────────────────────────────────────────────────────────
-const { updateStats, setupToggleButtons, openTopPanel, setupYearFilter } = setupUI({
+const { updateStats, setupToggleButtons, openTopPanel, setupYearFilter, setupDataFilePicker } = setupUI({
   scene,
   renderer,
   arrowCircle,
@@ -221,18 +221,42 @@ let updateLabels    = () => {};
 let refreshSpheres  = () => {};
 let updateBubbles   = () => {};
 let toggleBubbles   = () => {};
+let toggleAverage   = () => {};
 
-denotePlaces(scene, camera, renderer, 'data/playlist_chosic_data.json', openTopPanel).then(res => {
-  updateLabels   = res.updateLabels;
-  refreshSpheres = res.refreshSpheres;
-  updateBubbles  = res.updateBubbles  ?? (() => {});
-  toggleBubbles  = res.toggleBubbles  ?? (() => {});
-  updateAxisTextLabels();
-  syncArrowLabels();
-});
+async function loadDataFile(url) {
+  try {
+    const res = await denotePlaces(scene, camera, renderer, url, openTopPanel);
+    updateLabels   = res.updateLabels;
+    refreshSpheres = res.refreshSpheres;
+    updateBubbles  = res.updateBubbles  ?? (() => {});
+    toggleBubbles  = res.toggleBubbles  ?? (() => {});
+    toggleAverage  = res.toggleAverage  ?? (() => {});
+    updateAxisTextLabels();
+    syncArrowLabels();
+    window.dispatchEvent(new CustomEvent('data-file-loaded', {
+      detail: { ok: true, count: spheres.length }
+    }));
+  } catch (err) {
+    window.dispatchEvent(new CustomEvent('data-file-loaded', {
+      detail: { ok: false, error: err.message }
+    }));
+  }
+}
+
+loadDataFile('data/playlist_chosic_data.json');
+window.addEventListener('load-data-file', (e) => loadDataFile(e.detail));
 
 setupToggleButtons();
 setupYearFilter();
+setupDataFilePicker();
+
+// Tell denotePlaces about 2D/3D mode changes so renderSpheres can flatten immediately
+document.getElementById('2d')?.addEventListener('click', () => {
+  window.dispatchEvent(new CustomEvent('set-2d-state', { detail: true }));
+});
+document.getElementById('3d')?.addEventListener('click', () => {
+  window.dispatchEvent(new CustomEvent('set-2d-state', { detail: false }));
+});
 
 // ── Animation loop ─────────────────────────────────────────────────────────────
 function animate() {
@@ -257,7 +281,8 @@ function animate() {
 animate();
 
 // ── Events ─────────────────────────────────────────────────────────────────────
-window.addEventListener('toggle-bubbles', (e) => toggleBubbles(e.detail));
+window.addEventListener('toggle-bubbles',  (e) => toggleBubbles(e.detail));
+window.addEventListener('toggle-average',  (e) => toggleAverage(e.detail));
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;

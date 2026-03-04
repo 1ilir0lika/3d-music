@@ -267,6 +267,14 @@ export function setupUI({ arrowCircle, cube, scene, renderer, camera, labelRefs,
       toggleBubblesBtn.textContent = bubblesVisible ? 'Hide Regions' : 'Show Regions';
     });
 
+    const toggleAverageBtn = document.getElementById('toggle-average');
+    let averageVisible = true;
+    toggleAverageBtn?.addEventListener('click', () => {
+      averageVisible = !averageVisible;
+      window.dispatchEvent(new CustomEvent('toggle-average', { detail: averageVisible }));
+      toggleAverageBtn.textContent = averageVisible ? 'Hide Average' : 'Show Average';
+    });
+
     const btn2d = document.getElementById('2d');
     btn2d.addEventListener('click', () => {
       camera.position.set(0, 50, 0);
@@ -291,7 +299,6 @@ export function setupUI({ arrowCircle, cube, scene, renderer, camera, labelRefs,
       porcamadonna = false;
     });
   }
-
 
   // ── Hover label ────────────────────────────────────────────────────────────
   const hoverLabel = document.createElement('div');
@@ -356,7 +363,6 @@ export function setupUI({ arrowCircle, cube, scene, renderer, camera, labelRefs,
     let yearMin = MIN_YEAR;
     let yearMax = MAX_YEAR;
 
-    // Build slider HTML using string concat to avoid nested template literal issues
     const sliderStyle = 'position:absolute;width:100%;top:50%;transform:translateY(-50%);'
       + 'appearance:none;background:transparent;pointer-events:none;outline:none;margin:0;';
 
@@ -409,7 +415,84 @@ export function setupUI({ arrowCircle, cube, scene, renderer, camera, labelRefs,
     updateFill();
   }
 
-  return { updateStats, setupToggleButtons, updateHoverLabel, openTopPanel, setupYearFilter };
+  // ── Data file picker ───────────────────────────────────────────────────────
+  function setupDataFilePicker() {
+    const container = document.getElementById('data-file-container');
+    if (!container) return;
+
+    container.innerHTML =
+      '<div style="padding:0 10px 10px;display:flex;flex-direction:column;gap:8px;">'
+
+      // Local file upload
+      + '<label style="font-size:12px;color:#aaa;">Load local JSON file</label>'
+      + '<label id="file-upload-label" style="'
+      +   'display:block;padding:7px 12px;background:#2a2a2a;border:1px dashed #555;'
+      +   'border-radius:6px;font-size:12px;color:#ccc;cursor:pointer;text-align:center;'
+      +   'transition:background 0.2s;">'
+      +   '📂 Choose file…'
+      +   '<input id="data-file-input" type="file" accept=".json" style="display:none;">'
+      + '</label>'
+
+      // Or type a URL / path
+      + '<label style="font-size:12px;color:#aaa;">…or enter a URL / path</label>'
+      + '<div style="display:flex;gap:6px;">'
+      +   '<input id="data-url-input" type="text" placeholder="data/playlist_chosic_data.json" style="'
+      +     'flex:1;background:#222;border:1px solid #444;border-radius:6px;'
+      +     'padding:6px 8px;font-size:12px;color:#eee;outline:none;" />'
+      +   '<button id="data-url-load" style="'
+      +     'padding:6px 10px;background:#4fc3f7;color:#111;border:none;'
+      +     'border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">Load</button>'
+      + '</div>'
+
+      // Status line
+      + '<div id="data-file-status" style="font-size:11px;color:#888;min-height:16px;"></div>'
+      + '</div>';
+
+    const fileInput   = document.getElementById('data-file-input');
+    const uploadLabel = document.getElementById('file-upload-label');
+    const urlInput    = document.getElementById('data-url-input');
+    const loadBtn     = document.getElementById('data-url-load');
+    const status      = document.getElementById('data-file-status');
+
+    function dispatch(url, label) {
+      status.textContent = 'Loading ' + label + '…';
+      status.style.color = '#aaa';
+      window.dispatchEvent(new CustomEvent('load-data-file', { detail: url }));
+      // Listen once for success/error feedback via a custom ack
+      window.addEventListener('data-file-loaded', (e) => {
+        status.textContent = e.detail.ok
+          ? ('✅ Loaded ' + (e.detail.count ?? '') + ' tracks from ' + label)
+          : ('❌ Failed: ' + e.detail.error);
+        status.style.color = e.detail.ok ? '#2ecc71' : '#e74c3c';
+      }, { once: true });
+    }
+
+    // Local file → object URL
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      uploadLabel.textContent = '📂 ' + file.name;
+      const objectUrl = URL.createObjectURL(file);
+      dispatch(objectUrl, file.name);
+    });
+
+    // Hover effect on label
+    uploadLabel.addEventListener('mouseenter', () => uploadLabel.style.background = '#333');
+    uploadLabel.addEventListener('mouseleave', () => uploadLabel.style.background = '#2a2a2a');
+
+    // URL / path load
+    loadBtn.addEventListener('click', () => {
+      const url = urlInput.value.trim();
+      if (!url) return;
+      dispatch(url, url.split('/').pop());
+    });
+
+    urlInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') loadBtn.click();
+    });
+  }
+
+  return { updateStats, setupToggleButtons, updateHoverLabel, openTopPanel, setupYearFilter, setupDataFilePicker };
 }
 
 export function getMappedAxisFeatures() {

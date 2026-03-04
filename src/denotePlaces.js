@@ -98,8 +98,20 @@ function kmeans(vectors, k, iterations = 60) {
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/playlist_chosic_data.json', openTopPanel) {
+  if (denotePlaces._group) {
+    denotePlaces._group.clear();
+    scene.remove(denotePlaces._group);
+  }
+  if (denotePlaces._bubbleGroup) {
+    denotePlaces._bubbleGroup.clear();
+    scene.remove(denotePlaces._bubbleGroup);
+  }
+  spheres.length = 0;
+
   const group = new THREE.Group();
   const bubbleGroup = new THREE.Group();
+  denotePlaces._group       = group;
+  denotePlaces._bubbleGroup = bubbleGroup;
   scene.add(group);
   scene.add(bubbleGroup);
 
@@ -139,26 +151,60 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
     }
     raycaster.setFromCamera(mouseClick, camera);
     const intersects = raycaster.intersectObjects(group.children, true);
-    const clicked = intersects.find(i => i.object.userData.title);
+    const clicked = intersects.find(i => i.object.userData.title && !i.object.userData.isAverage);
     if (clicked) openTopPanel(clicked.object.userData);
   });
 
   try {
-    // Year filter state — updated via 'year-filter-change' event
     let yearFilter = { min: 1950, max: new Date().getFullYear() };
+    // is2D is set by the year-filter-change event from main.js
+    let is2D = false;
     window.addEventListener('year-filter-change', (e) => {
       yearFilter = e.detail;
       renderSpheres();
     });
+    window.addEventListener('set-2d-state', (e) => { is2D = e.detail; });
+
+    // ── Average sphere ─────────────────────────────────────────────────────
+    let avgSphere = null;
+    let avgSphereVisible = true;
+
+    function renderAverageSphere(mapped) {
+      if (avgSphere) { group.remove(avgSphere); avgSphere = null; }
+      if (mapped.length === 0) return;
+
+      const avg = mapped.reduce(
+        (acc, { x, y, z }) => { acc.x += x; acc.y += y; acc.z += z; return acc; },
+        { x: 0, y: 0, z: 0 }
+      );
+      avg.x /= mapped.length;
+      avg.y /= mapped.length;
+      avg.z /= mapped.length;
+
+      avgSphere = new THREE.Mesh(
+        new THREE.SphereGeometry(0.5, 32, 32),
+        new THREE.MeshStandardMaterial({
+          color: 0xffee00,
+          emissive: new THREE.Color(0xffee00),
+          emissiveIntensity: 0.6,
+          roughness: 0.3,
+          metalness: 0.1,
+        })
+      );
+      avgSphere.position.set(avg.x, is2D ? 0 : avg.y, avg.z);
+      avgSphere.userData = { isAverage: true };
+      avgSphere.visible = avgSphereVisible;
+      group.add(avgSphere);
+    }
 
     function renderSpheres() {
       const axes = getMappedAxisFeatures();
       const parsed = parseTrackFeatures(data, axes, assignments);
       const filtered = parsed.filter(t => {
-        if (t.year == null) return true; // keep tracks with unknown year
+        if (t.year == null) return true;
         return t.year >= yearFilter.min && t.year <= yearFilter.max;
       });
-      const mapped = normalizePositions(filtered, 25, axes);
+      const mapped = normalizePositions(filtered);
 
       group.clear();
       spheres.length = 0;
@@ -176,7 +222,16 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
         spheres.push(sphere);
       });
 
+      // If 2D mode is active, flatten Y immediately — no flicker
+      if (is2D) {
+        spheres.forEach(s => {
+          s.userData.originalY = s.position.y;
+          s.position.y = 0;
+        });
+      }
+
       renderBubbles(mapped);
+      renderAverageSphere(mapped);
       console.log(`✅ Placed ${mapped.length} spheres`);
     }
 
@@ -269,7 +324,7 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
       updateLabels: () => {
         raycaster.setFromCamera(mouse, camera);
         const intersects = raycaster.intersectObjects(group.children, true);
-        const found = intersects.find(i => i.object.userData.title);
+        const found = intersects.find(i => i.object.userData.title && !i.object.userData.isAverage);
 
         if (found && found.object !== hoveredObject) {
           hoveredObject = found.object;
@@ -295,6 +350,10 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
       refreshSpheres: renderSpheres,
       toggleBubbles: (visible) => {
         bubbleGroup.visible = visible;
+      },
+      toggleAverage: (visible) => {
+        avgSphereVisible = visible;
+        if (avgSphere) avgSphere.visible = visible;
       },
     };
 
@@ -322,7 +381,11 @@ function parseTrackFeatures(data, axes, assignments) {
       const preview_url = info.preview_url || '';
       const releaseDate = info.album?.release_date ?? '';
       const year = releaseDate ? parseInt(releaseDate.slice(0, 4)) : null;
-      const featureVal = (key) => key === 'popularity' ? (popularity / 100) : (f[key] ?? 0);
+      const featureVal = (key) => {
+        if (key === 'popularity') return popularity / 100;
+        if (key === 'tempo') return Math.min((f[key] ?? 120) / 200, 1);
+        return f[key] ?? 0;
+      };
 
       return {
         x: featureVal(axes.x),
@@ -342,36 +405,16 @@ function parseTrackFeatures(data, axes, assignments) {
     .filter(Boolean);
 }
 
-function normalizePositions(data, totalRange = 25, axes) {
-  const min = { x: Infinity, y: Infinity, z: Infinity };
-  const max = { x: -Infinity, y: -Infinity, z: -Infinity };
+function featureToWorld(value) {
+  return (value - 0.5) * 50;
+}
 
-  data.forEach(({ x, y, z }) => {
-    if (x < min.x) min.x = x;
-    if (y < min.y) min.y = y;
-    if (z < min.z) min.z = z;
-    if (x > max.x) max.x = x;
-    if (y > max.y) max.y = y;
-    if (z > max.z) max.z = z;
-  });
-
-  // Store ranges keyed by FEATURE NAME so the UI can always look up by feature
-  if (axes) {
-    lastAxisRanges = {
-      byFeature: {
-        [axes.x]: { min: min.x, max: max.x },
-        [axes.y]: { min: min.y, max: max.y },
-        [axes.z]: { min: min.z, max: max.z },
-      },
-      totalRange,
-    };
-  }
-
+function normalizePositions(data) {
   return data.map(p => ({
     ...p,
-    x: mapToRange(p.x, min.x, max.x, -totalRange, totalRange),
-    y: mapToRange(p.y, min.y, max.y, -totalRange, totalRange),
-    z: mapToRange(p.z, min.z, max.z, -totalRange, totalRange),
+    x: featureToWorld(p.x),
+    y: featureToWorld(p.y),
+    z: featureToWorld(p.z),
   }));
 }
 
