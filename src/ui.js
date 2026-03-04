@@ -277,6 +277,7 @@ export function setupUI({ arrowCircle, cube, scene, renderer, camera, labelRefs,
 
     const btn2d = document.getElementById('2d');
     btn2d.addEventListener('click', () => {
+      if (porcamadonna) return;   // already in 2D, don't overwrite originalY
       camera.position.set(0, 50, 0);
       camera.lookAt(0, 0, 0);
       switchTo2D(spheres);
