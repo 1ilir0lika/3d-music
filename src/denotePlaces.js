@@ -106,6 +106,11 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
     denotePlaces._bubbleGroup.clear();
     scene.remove(denotePlaces._bubbleGroup);
   }
+  if (denotePlaces._avgTrailLine) {
+    scene.remove(denotePlaces._avgTrailLine);
+    denotePlaces._avgTrailLine.geometry.dispose();
+    denotePlaces._avgTrailLine = null;
+  }
   spheres.length = 0;
 
   const group = new THREE.Group();
@@ -169,6 +174,31 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
     let avgSphere = null;
     let avgSphereVisible = true;
 
+    // ── Average trail ──────────────────────────────────────────────────────
+    const avgTrailByYear = new Map(); // Map<maxYear, THREE.Vector3>
+    const avgTrailMaterial = new THREE.LineBasicMaterial({
+      color: 0xffee00,
+      transparent: true,
+      opacity: 0.65,
+      depthWrite: false,
+    });
+    // Use a Points + Line combo: start with empty geometry
+    let avgTrailLine = new THREE.Line(new THREE.BufferGeometry(), avgTrailMaterial);
+    scene.add(avgTrailLine);
+    denotePlaces._avgTrailLine = avgTrailLine;
+
+    function rebuildTrailGeometry() {
+      const sorted = [...avgTrailByYear.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([, pos]) => pos);
+
+      // Dispose old geometry and swap in a fresh one — avoids stale drawRange bugs
+      avgTrailLine.geometry.dispose();
+      avgTrailLine.geometry = new THREE.BufferGeometry().setFromPoints(
+        sorted.length > 1 ? sorted : [new THREE.Vector3(), new THREE.Vector3()]
+      );
+      avgTrailLine.visible = avgSphereVisible && sorted.length > 1;
+    }
     function renderAverageSphere(mapped) {
       if (avgSphere) { group.remove(avgSphere); avgSphere = null; }
       if (mapped.length === 0) return;
@@ -195,6 +225,15 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
       avgSphere.userData = { isAverage: true };
       avgSphere.visible = avgSphereVisible;
       group.add(avgSphere);
+
+      // Store position keyed to current yearFilter.max,
+      // then drop any entries beyond it (handles backward scrubbing).
+      const currentMax = yearFilter.max;
+      avgTrailByYear.set(currentMax, avgSphere.position.clone());
+      for (const key of avgTrailByYear.keys()) {
+        if (key > currentMax) avgTrailByYear.delete(key);
+      }
+      rebuildTrailGeometry();
     }
 
     function renderSpheres() {
@@ -354,6 +393,7 @@ export async function denotePlaces(scene, camera, renderer, jsonUrl = 'data/play
       toggleAverage: (visible) => {
         avgSphereVisible = visible;
         if (avgSphere) avgSphere.visible = visible;
+        avgTrailLine.visible = visible;
       },
     };
 

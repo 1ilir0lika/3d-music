@@ -46,6 +46,12 @@ export function setupUI({ arrowCircle, cube, scene, renderer, camera, labelRefs,
 
   if (closePanelBtn && topPanel) {
     closePanelBtn.addEventListener('click', () => {
+      // Stop any playing audio before hiding the panel
+      const audio = panelContent?.querySelector('audio');
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
       topPanel.classList.add('hidden');
       toggleBtn.classList.remove('button-shifted');
     });
